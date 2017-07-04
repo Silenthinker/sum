@@ -206,12 +206,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     
     enc_output = state 
     logits = self.infer_conv_block(enc_output, cur_inputs_pos)
-    if sample:
-      softmax = tf.nn.softmax(logits, dim=-1, name=None) # [None, self.V]
-      sampled_ids = tf.multinomial(tf.log(tf.clip_by_value(softmax, 1e-20, 1.0)), 1) # [None, 1]
-      sampled_ids = tf.cast(tf.reshape(sampled_ids, [-1]), dtypes.int32) # [None]
-    else:
-      sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32) # greedy...
+    
+    sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32) # greedy...
 
     finished, next_inputs = self.next_inputs(sample_ids=sample_ids)
     next_inputs = tf.reshape(next_inputs, [self.config.beam_width, 1, inputs.get_shape().as_list()[-1]])
@@ -289,7 +285,11 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     
     return outputs, final_state
 
-  def conv_decoder_train(self, enc_output, labels, sequence_length):
+  def conv_decoder_train(self, enc_output, labels, sequence_length, sample=False):
+    '''
+    If sample is set True, returns two ConvDecoderOutput: greedy and sampled, respectively;
+    otherwise, returns greedy only, the sampled is None
+    '''
     embed_size = labels.get_shape().as_list()[-1]
     if self.params["position_embeddings.enable"]:
       positions_embed = self._create_position_embedding(
@@ -306,13 +306,26 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     next_layer = self.conv_block(enc_output, inputs, True)
       
        
-    logits = _transpose_batch_time(next_layer)   
-
+    logits = _transpose_batch_time(next_layer) 
+    sampled_output = None
+    if sample:
+      softmax = tf.nn.softmax(logits, dim=-1, name=None) # [None, self.V]
+      sample_id_list = []
+      for i in range(32):
+        sample_id = tf.multinomial(tf.log(tf.clip_by_value(softmax[:, i, :], 1e-20, 1.0)), 1) # [None, 1]
+        sample_id = tf.cast(tf.reshape(sample_id, [-1]), dtypes.int32) # [None]
+        sample_id_list.append(sample_id)
+      sample_ids_sampled = tf.stack(sample_id_list, axis=1)
+      sampled_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids_sampled)
+    
+    
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32) # greedy...
- 
-    return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
+    greedy_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids) 
+    return greedy_output, sampled_output
+    
+    
 
-  def _build(self, enc_output, labels=None, sequence_length=None):
+  def _build(self, enc_output, labels=None, sequence_length=None, sample=False):
     
     if not self.initial_state:
       self._setup(initial_state=enc_output)
@@ -322,6 +335,6 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       return self.finalize(outputs, states)
     else:
       with tf.variable_scope("decoder"):  # when infer, dynamic decode will add decoder scope, so we add here to keep it the same  
-        outputs = self.conv_decoder_train(enc_output=enc_output, labels=labels, sequence_length=sequence_length)
+        outputs = self.conv_decoder_train(enc_output=enc_output, labels=labels, sequence_length=sequence_length, sample=sample)
         states = None
         return outputs, states

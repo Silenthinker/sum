@@ -145,12 +145,12 @@ class ConvSeq2Seq(Seq2SeqModel):
         pos_embedding=self.target_pos_embedding_fairseq(),
         start_tokens=self.target_vocab_info.special_vocab.SEQUENCE_END)
 
-  def _decode_train(self, decoder, _encoder_output, _features, labels):
+  def _decode_train(self, decoder, _encoder_output, _features, labels, sample=False):
     """Runs decoding in training mode"""
     target_embedded = tf.nn.embedding_lookup(decoder.target_embedding,
                                              labels["target_ids"])
 
-    return decoder(_encoder_output, labels=target_embedded[:,:-1], sequence_length=labels["target_len"]-1)
+    return decoder(_encoder_output, labels=target_embedded[:,:-1], sequence_length=labels["target_len"]-1, sample=sample)
 
   def _decode_infer(self, decoder, _encoder_output, features, labels):
     """Runs decoding in inference mode"""
@@ -169,7 +169,7 @@ class ConvSeq2Seq(Seq2SeqModel):
     return encoder_fn(source_embedded, features["source_len"])
 
   @templatemethod("decode")
-  def decode(self, encoder_output, features, labels):
+  def decode(self, encoder_output, features, labels, sample=False):
     
     decoder = self._create_decoder(encoder_output, features, labels)
     self.decoder = decoder
@@ -178,4 +178,4 @@ class ConvSeq2Seq(Seq2SeqModel):
                                 labels)
     else:
       return self._decode_train(decoder, encoder_output, features,
-                                labels)
+                                labels, sample=sample)

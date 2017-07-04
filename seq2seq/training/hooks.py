@@ -37,6 +37,8 @@ from tensorflow import gfile
 from seq2seq.configurable import Configurable, abstractstaticmethod
 from seq2seq import graph_utils, global_vars
 
+from seq2seq.metrics import score
+
 FLAGS = tf.flags.FLAGS
 
 
@@ -178,7 +180,7 @@ class TrainSampleHook(TrainingHook):
     self._iter_count = 0
     self._global_step = tf.train.get_global_step()
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
-    self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
+    self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
     # Create the sample directory
     if self._sample_dir is not None:
       gfile.MakeDirs(self._sample_dir)
@@ -188,7 +190,7 @@ class TrainSampleHook(TrainingHook):
     if self._should_trigger:
       fetches = {
           "predicted_tokens": self._pred_dict["predicted_tokens"],
-          "predicted_tokens_greedy": self._pred_dict_greedy["predicted_tokens"],
+          "predicted_tokens_sampled": self._pred_dict_sampled["predicted_tokens"],
           "target_words": self._pred_dict["labels.target_tokens"],
           "target_len": self._pred_dict["labels.target_len"]
       }
@@ -206,7 +208,6 @@ class TrainSampleHook(TrainingHook):
     result_dicts = [
         dict(zip(result_dict, t)) for t in zip(*result_dict.values())
     ]
-
     # Print results
     result_str = ""
     result_str += "Prediction followed by Target @ Step {}\n".format(step)
@@ -214,14 +215,19 @@ class TrainSampleHook(TrainingHook):
     for result in result_dicts:
       target_len = result["target_len"]
       predicted_slice = result["predicted_tokens"][:target_len - 1]
-      predicted_slice_greedy = result["predicted_tokens_greedy"][:target_len - 1]
+      predicted_slice_sampled = result["predicted_tokens_sampled"][:target_len - 1]
       target_slice = result["target_words"][1:target_len]
-      result_str += self._target_delimiter.encode("utf-8").join(
-          predicted_slice).decode("utf-8") + "\n"
-      # result_str += self._target_delimiter.encode("utf-8").join(
-      #     predicted_slice_greedy).decode("utf-8") + "\n"
-      result_str += self._target_delimiter.encode("utf-8").join(
-          target_slice).decode("utf-8") + "\n\n"
+      predicted_str = self._target_delimiter.encode("utf-8").join(
+          predicted_slice).decode("utf-8")
+      predicted_str_sampled = self._target_delimiter.encode("utf-8").join(
+          predicted_slice_sampled).decode("utf-8")
+      result_str += predicted_str + "\n"
+      result_str += predicted_str_sampled + "\n"
+      target_str = self._target_delimiter.encode("utf-8").join(
+          target_slice).decode("utf-8")
+      result_str += target_str + "\n"
+      result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str]))
+      result_str += "BLEU of pred_sampled: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str_sampled]))
     result_str += ("=" * 100) + "\n\n"
     tf.logging.info(result_str)
     if self._sample_dir:

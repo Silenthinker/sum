@@ -298,27 +298,41 @@ class Seq2SeqModel(ModelBase):
     features, labels = self._preprocess(features, labels)
 
     encoder_output = self.encode(features, labels)
-    decoder_output, _, = self.decode(encoder_output, features, labels)
+    # decoder_output, _, = self.decode(encoder_output, features, labels, sample=False)
+    
+    decoder_outputs, _ = self.decode(encoder_output, features, labels, sample=True)
+    decoder_output_greedy, decoder_output_sampled = decoder_outputs[0], decoder_outputs[1]
+    
+    
     decoder = self.decoder
+
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
       loss = None
       train_op = None
       
       predictions = self._create_predictions(
-          decoder_output=decoder_output, features=features, labels=labels)
+          decoder_output=decoder_output_greedy, features=features, labels=labels)
     else:
-      losses, loss = self.compute_loss(decoder_output, features, labels)
+      ##############
+      rewards = tf.placeholder(tf.float32, [None])
+      base_line = tf.placeholder(tf.float32, [None])
+      r  =  rewards - base_line
+      # sum_loss = - tf.reduce_sum(
+      #   tf.transpose(tf.mul(tf.transpose(loss, [2, 1, 0]),r), [2, 1, 0]))/ norm
+      ##############
+      losses, loss = self.compute_loss(decoder_output_greedy, features, labels)
       ##################
-      '''
-      if not decoder.initial_state:
-        decoder._setup(initial_state=encoder_output)
-      outputs, states = decoder.conv_decoder_infer()
-      decoder_output_greedy, _ = decoder.finalize(outputs, states)
-      predictions_greedy = self._create_predictions(
-        decoder_output=decoder_output_greedy,
-        features=features,
-        labels=labels)
-      '''
+      
+      # if not decoder.initial_state:
+      #   decoder._setup(initial_state=encoder_output)
+      # outputs, states = decoder.conv_decoder_infer()
+      # decoder_output_greedy, _ = decoder.finalize(outputs, states)
+      
+      # predictions_greedy = self._create_predictions(
+      #   decoder_output=decoder_output_greedy,
+      #   features=features,
+      #   labels=labels)
+      
       ##################
       train_op = None
       if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
@@ -333,13 +347,17 @@ class Seq2SeqModel(ModelBase):
         train_op = self._build_train_op(loss, gradient_multipliers=gradient_multipliers)
       
       predictions = self._create_predictions(
-          decoder_output=decoder_output,
+          decoder_output=decoder_output_greedy,
+          features=features,
+          labels=labels,
+          losses=losses)
+      predictions_sampled = self._create_predictions(
+          decoder_output=decoder_output_sampled,
           features=features,
           labels=labels,
           losses=losses)
     # We add "useful" tensors to the graph collection so that we
     # can easly find them in our hooks/monitors.
     graph_utils.add_dict_to_collection(predictions, "predictions")
-    graph_utils.add_dict_to_collection(predictions_greedy, "predictions_greedy")
-
+    graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
     return predictions, loss, train_op
