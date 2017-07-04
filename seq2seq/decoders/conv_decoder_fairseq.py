@@ -194,7 +194,11 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     
     return self._combiner_fn(inputs, seq_pos_embed_batch)
 
-  def step(self, time, inputs, state, name=None):
+  def step(self, time, inputs, state, name=None, sample=False):
+    '''
+    Args:
+      sample: True to generate by sampling; otherwise greedily
+    '''
    
     cur_inputs = inputs[:,0:time+1,:] 
     zeros_padding = inputs[:,time+2:,:] 
@@ -202,8 +206,12 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     
     enc_output = state 
     logits = self.infer_conv_block(enc_output, cur_inputs_pos)
-    
-    sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32)
+    if sample:
+      softmax = tf.nn.softmax(logits, dim=-1, name=None) # [None, self.V]
+      sampled_ids = tf.multinomial(tf.log(tf.clip_by_value(softmax, 1e-20, 1.0)), 1) # [None, 1]
+      sampled_ids = tf.cast(tf.reshape(sampled_ids, [-1]), dtypes.int32) # [None]
+    else:
+      sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32) # greedy...
 
     finished, next_inputs = self.next_inputs(sample_ids=sample_ids)
     next_inputs = tf.reshape(next_inputs, [self.config.beam_width, 1, inputs.get_shape().as_list()[-1]])
@@ -271,12 +279,13 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     maximum_iterations = self.params["max_decode_length"]
     
     self.init_params_in_loop()
-    tf.get_variable_scope().reuse_variables()    
-    outputs, final_state = dynamic_decode(
-        decoder=self,
-        output_time_major=True,
-        impute_finished=False,
-        maximum_iterations=maximum_iterations)
+    # tf.get_variable_scope().reuse_variables()    
+    with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+      outputs, final_state = dynamic_decode(
+          decoder=self,
+          output_time_major=True,
+          impute_finished=False,
+          maximum_iterations=maximum_iterations)
     
     return outputs, final_state
 
@@ -299,7 +308,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
        
     logits = _transpose_batch_time(next_layer)   
 
-    sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32)
+    sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32) # greedy...
  
     return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
 

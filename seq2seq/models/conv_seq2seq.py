@@ -172,7 +172,7 @@ class ConvSeq2Seq(Seq2SeqModel):
   def decode(self, encoder_output, features, labels):
     
     decoder = self._create_decoder(encoder_output, features, labels)
-     
+    self.decoder = decoder
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
       return self._decode_infer(decoder, encoder_output, features,
                                 labels)

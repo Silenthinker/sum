@@ -178,6 +178,7 @@ class TrainSampleHook(TrainingHook):
     self._iter_count = 0
     self._global_step = tf.train.get_global_step()
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
+    self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
     # Create the sample directory
     if self._sample_dir is not None:
       gfile.MakeDirs(self._sample_dir)
@@ -187,6 +188,7 @@ class TrainSampleHook(TrainingHook):
     if self._should_trigger:
       fetches = {
           "predicted_tokens": self._pred_dict["predicted_tokens"],
+          "predicted_tokens_greedy": self._pred_dict_greedy["predicted_tokens"],
           "target_words": self._pred_dict["labels.target_tokens"],
           "target_len": self._pred_dict["labels.target_len"]
       }
@@ -212,9 +214,12 @@ class TrainSampleHook(TrainingHook):
     for result in result_dicts:
       target_len = result["target_len"]
       predicted_slice = result["predicted_tokens"][:target_len - 1]
+      predicted_slice_greedy = result["predicted_tokens_greedy"][:target_len - 1]
       target_slice = result["target_words"][1:target_len]
       result_str += self._target_delimiter.encode("utf-8").join(
           predicted_slice).decode("utf-8") + "\n"
+      # result_str += self._target_delimiter.encode("utf-8").join(
+      #     predicted_slice_greedy).decode("utf-8") + "\n"
       result_str += self._target_delimiter.encode("utf-8").join(
           target_slice).decode("utf-8") + "\n\n"
     result_str += ("=" * 100) + "\n\n"

@@ -22,6 +22,7 @@ import collections
 
 import tensorflow as tf
 
+from seq2seq.metrics import score
 from seq2seq import graph_utils
 from seq2seq import losses as seq2seq_losses
 from seq2seq.contrib.seq2seq.decoder import _transpose_batch_time
@@ -298,7 +299,7 @@ class Seq2SeqModel(ModelBase):
 
     encoder_output = self.encode(features, labels)
     decoder_output, _, = self.decode(encoder_output, features, labels)
-
+    decoder = self.decoder
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
       loss = None
       train_op = None
@@ -307,7 +308,18 @@ class Seq2SeqModel(ModelBase):
           decoder_output=decoder_output, features=features, labels=labels)
     else:
       losses, loss = self.compute_loss(decoder_output, features, labels)
-
+      ##################
+      '''
+      if not decoder.initial_state:
+        decoder._setup(initial_state=encoder_output)
+      outputs, states = decoder.conv_decoder_infer()
+      decoder_output_greedy, _ = decoder.finalize(outputs, states)
+      predictions_greedy = self._create_predictions(
+        decoder_output=decoder_output_greedy,
+        features=features,
+        labels=labels)
+      '''
+      ##################
       train_op = None
       if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
         gradient_multipliers = {}
@@ -325,9 +337,9 @@ class Seq2SeqModel(ModelBase):
           features=features,
           labels=labels,
           losses=losses)
-
     # We add "useful" tensors to the graph collection so that we
     # can easly find them in our hooks/monitors.
     graph_utils.add_dict_to_collection(predictions, "predictions")
+    graph_utils.add_dict_to_collection(predictions_greedy, "predictions_greedy")
 
     return predictions, loss, train_op
