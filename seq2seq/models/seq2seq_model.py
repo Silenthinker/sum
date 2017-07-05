@@ -285,7 +285,7 @@ class Seq2SeqModel(ModelBase):
     losses = seq2seq_losses.cross_entropy_sequence_loss(
         logits=decoder_output.logits[:, :, :],
         targets=tf.transpose(labels["target_ids"][:, 1:], [1, 0]),
-        sequence_length=labels["target_len"] - 1)
+        sequence_length=labels["target_len"] - 1) # [T, B]
 
     # Calculate the average log perplexity
     loss = tf.reduce_sum(losses) / tf.to_float(
@@ -331,14 +331,20 @@ class Seq2SeqModel(ModelBase):
       graph_utils.add_dict_to_collection(predictions, "predictions")
       graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
 
+      losses, loss = self.compute_loss(decoder_output_greedy, features, labels)
+      
       ##############
       rewards = tf.placeholder(tf.float32, [None])
       base_line = tf.placeholder(tf.float32, [None])
       r  =  rewards - base_line
-      # sum_loss = - tf.reduce_sum(
-      #   tf.transpose(tf.mul(tf.transpose(loss, [2, 1, 0]),r), [2, 1, 0]))/ norm
-      ##############
-      losses, loss = self.compute_loss(decoder_output_greedy, features, labels)
+
+      grad_mask = tf.placeholder(tf.int32, [None, 32]) # n_time_step = 32;
+      t1_mul = tf.to_float(tf.transpose(grad_mask, [1, 0])) # [T, B]
+      norm = tf.reduce_sum(t1_mul) # normalization...
+      mask_loss = losses * t1_mul # loss: [T, B]
+
+      sum_loss = tf.reduce_sum(tf.mul(mask_loss, (rewards - base_line)))/ norm # x * y element-wise, give [T, B]
+      
       ##################
       
       # if not decoder.initial_state:
@@ -363,5 +369,7 @@ class Seq2SeqModel(ModelBase):
           gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
         #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
         train_op = self._build_train_op(loss, gradient_multipliers=gradient_multipliers)
-      graph_utils.add_dict_to_collection({"loss": loss}, "loss")
+      loss_dict = {"loss_rl": sum_loss,
+        "loss": loss}
+      graph_utils.add_dict_to_collection(loss_dict, "losses")
     return predictions, loss, train_op
