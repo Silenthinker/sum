@@ -36,6 +36,7 @@ from tensorflow import gfile
 
 from seq2seq.configurable import Configurable, abstractstaticmethod
 from seq2seq import graph_utils, global_vars
+from seq2seq.data import utils
 
 from seq2seq.metrics import score
 
@@ -52,6 +53,7 @@ class TrainingHook(tf.train.SessionRunHook, Configurable):
     Configurable.__init__(self, params, tf.contrib.learn.ModeKeys.TRAIN)
     self._model_dir = model_dir
     self._run_config = run_config
+    self._session = None
 
   @property
   def model_dir(self):
@@ -70,6 +72,8 @@ class TrainingHook(tf.train.SessionRunHook, Configurable):
   def default_params():
     raise NotImplementedError()
 
+  def after_create_session(self, session, coord):
+    self._session = session
 
 class MetadataCaptureHook(TrainingHook):
   """A hook to capture metadata for a single step.
@@ -194,7 +198,9 @@ class TrainSampleHook(TrainingHook):
           "target_words": self._pred_dict["labels.target_tokens"],
           "target_len": self._pred_dict["labels.target_len"]
       }
-      return tf.train.SessionRunArgs([fetches, self._global_step])
+      sessRunArgs = tf.train.SessionRunArgs([fetches, self._global_step])
+
+      return sessRunArgs
     return tf.train.SessionRunArgs([{}, self._global_step])
 
   def after_run(self, _run_context, run_values):
@@ -203,7 +209,6 @@ class TrainSampleHook(TrainingHook):
 
     if not self._should_trigger:
       return None
-
     # Convert dict of lists to list of dicts
     result_dicts = [
         dict(zip(result_dict, t)) for t in zip(*result_dict.values())
@@ -384,3 +389,64 @@ class SyncReplicasOptimizerHook(TrainingHook):
     if self._q_runner is not None:
       self._q_runner.create_threads(
           session, coord=coord, daemon=True, start=True)
+
+class TrainUpdateLoss(TrainingHook):
+  """Update loss to obtain RL loss
+
+  Params:
+    delimiter: Join tokens on this delimiter. Defaults to space.
+  """
+
+  #pylint: disable=missing-docstring
+
+  def __init__(self, params, model_dir, run_config):
+    super(TrainUpdateLoss, self).__init__(params, model_dir, run_config)
+    self._pred_dict = {}
+    self._iter_count = 0
+    self._global_step = None
+    self._source_delimiter = self.params["source_delimiter"]
+    self._target_delimiter = self.params["target_delimiter"]
+
+  @staticmethod
+  def default_params():
+    return {
+        "source_delimiter": " ",
+        "target_delimiter": " "
+    }
+
+  def begin(self):
+    self._iter_count = 0
+    self._global_step = tf.train.get_global_step()
+    self._pred_dict = graph_utils.get_dict_from_collection("predictions")
+    self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
+    
+
+  def before_run(self, _run_context):
+    fetches = {
+        "predicted_tokens": self._pred_dict["predicted_tokens"],
+        "predicted_tokens_sampled": self._pred_dict_sampled["predicted_tokens"],
+        "target_words": self._pred_dict["labels.target_tokens"],
+        "target_len": self._pred_dict["labels.target_len"]
+    }
+    sessRunArgs = tf.train.SessionRunArgs([fetches, self._global_step])
+
+    return sessRunArgs
+
+  def after_run(self, _run_context, run_values):
+    result_dict, step = run_values.results
+
+    predicted_tokens_greedy = result_dict["predicted_tokens"]
+    predicted_tokens_sampled = result_dict["predicted_tokens_sampled"]
+    target_words = result_dict["target_words"][:, 1:]
+
+    # decode tokens from byte to string and prepare for blue evaluation 
+    _, ref_decoded = utils.decode_tokens_for_blue(target_words, self._target_delimiter)
+    ref_decoded = [[seq] for seq in ref_decoded]
+    _, decoded_greedy = utils.decode_tokens_for_blue(predicted_tokens_greedy, self._target_delimiter)
+    masks, decoded_sampled = utils.decode_tokens_for_blue(predicted_tokens_sampled, self._target_delimiter)
+    # compute bleu scores for sampled generator and greedy generator
+    r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
+    b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
+    tf.logging.info("++++++++++++++++++++++")
+    tf.logging.info(self._session.run(graph_utils.get_dict_from_collection("loss")["loss"]))
+    

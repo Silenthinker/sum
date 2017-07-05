@@ -312,7 +312,25 @@ class Seq2SeqModel(ModelBase):
       
       predictions = self._create_predictions(
           decoder_output=decoder_output_greedy, features=features, labels=labels)
+      graph_utils.add_dict_to_collection(predictions, "predictions")
     else:
+      losses = None
+      predictions = self._create_predictions(
+          decoder_output=decoder_output_greedy,
+          features=features,
+          labels=labels,
+          losses=losses)
+      predictions_sampled = self._create_predictions(
+          decoder_output=decoder_output_sampled,
+          features=features,
+          labels=labels,
+          losses=losses)
+      
+      # We add "useful" tensors to the graph collection so that we
+      # can easly find them in our hooks/monitors.
+      graph_utils.add_dict_to_collection(predictions, "predictions")
+      graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
+
       ##############
       rewards = tf.placeholder(tf.float32, [None])
       base_line = tf.placeholder(tf.float32, [None])
@@ -345,19 +363,5 @@ class Seq2SeqModel(ModelBase):
           gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
         #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
         train_op = self._build_train_op(loss, gradient_multipliers=gradient_multipliers)
-      
-      predictions = self._create_predictions(
-          decoder_output=decoder_output_greedy,
-          features=features,
-          labels=labels,
-          losses=losses)
-      predictions_sampled = self._create_predictions(
-          decoder_output=decoder_output_sampled,
-          features=features,
-          labels=labels,
-          losses=losses)
-    # We add "useful" tensors to the graph collection so that we
-    # can easly find them in our hooks/monitors.
-    graph_utils.add_dict_to_collection(predictions, "predictions")
-    graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
+      graph_utils.add_dict_to_collection({"loss": loss}, "loss")
     return predictions, loss, train_op
