@@ -447,7 +447,6 @@ class TrainUpdateLoss(TrainingHook):
     # compute bleu scores for sampled generator and greedy generator
     r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
     b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
-    
-    tf.logging.info("++++++++++++++++++++++")
+
     # tf.logging.info(self._session.run(graph_utils.get_dict_from_collection("loss")["loss"]))
     

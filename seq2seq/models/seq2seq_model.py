@@ -301,7 +301,7 @@ class Seq2SeqModel(ModelBase):
     # decoder_output, _, = self.decode(encoder_output, features, labels, sample=False)
     
     decoder_outputs, _ = self.decode(encoder_output, features, labels, sample=True)
-    decoder_output_greedy, decoder_output_sampled = decoder_outputs[0], decoder_outputs[1]
+    
     
     
     decoder = self.decoder
@@ -316,24 +316,26 @@ class Seq2SeqModel(ModelBase):
     else:
       losses = None
       predictions = self._create_predictions(
-          decoder_output=decoder_output_greedy,
+          decoder_output=decoder_outputs,
           features=features,
           labels=labels,
           losses=losses)
-      predictions_sampled = self._create_predictions(
-          decoder_output=decoder_output_sampled,
-          features=features,
-          labels=labels,
-          losses=losses)
+      # predictions_sampled = self._create_predictions(
+      #     decoder_output=decoder_output_sampled,
+      #     features=features,
+      #     labels=labels,
+      #     losses=losses)
       
       # We add "useful" tensors to the graph collection so that we
       # can easly find them in our hooks/monitors.
       graph_utils.add_dict_to_collection(predictions, "predictions")
+      predictions_sampled = predictions
       graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
 
-      losses, loss = self.compute_loss(decoder_output_greedy, features, labels)
+      losses, loss = self.compute_loss(decoder_outputs, features, labels)
       
       ##############
+      '''
       rewards = tf.placeholder(tf.float32, [None])
       base_line = tf.placeholder(tf.float32, [None])
       r  =  rewards - base_line
@@ -343,8 +345,8 @@ class Seq2SeqModel(ModelBase):
       norm = tf.reduce_sum(t1_mul) # normalization...
       mask_loss = losses * t1_mul # loss: [T, B]
 
-      sum_loss = tf.reduce_sum(tf.mul(mask_loss, (rewards - base_line)))/ norm # x * y element-wise, give [T, B]
-      
+      sum_loss = tf.reduce_sum(tf.multiply(mask_loss, (rewards - base_line)))/ norm # x * y element-wise, give [T, B]
+      '''
       ##################
       
       # if not decoder.initial_state:
@@ -369,7 +371,4 @@ class Seq2SeqModel(ModelBase):
           gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
         #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
         train_op = self._build_train_op(loss, gradient_multipliers=gradient_multipliers)
-      loss_dict = {"loss_rl": sum_loss,
-        "loss": loss}
-      graph_utils.add_dict_to_collection(loss_dict, "losses")
     return predictions, loss, train_op

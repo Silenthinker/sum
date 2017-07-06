@@ -275,13 +275,12 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     maximum_iterations = self.params["max_decode_length"]
     
     self.init_params_in_loop()
-    # tf.get_variable_scope().reuse_variables()    
-    with tf.variable_scope(tf.get_variable_scope(), reuse=True):
-      outputs, final_state = dynamic_decode(
-          decoder=self,
-          output_time_major=True,
-          impute_finished=False,
-          maximum_iterations=maximum_iterations)
+    tf.get_variable_scope().reuse_variables()    
+    outputs, final_state = dynamic_decode(
+        decoder=self,
+        output_time_major=True,
+        impute_finished=False,
+        maximum_iterations=maximum_iterations)
     
     return outputs, final_state
 
@@ -307,6 +306,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       
        
     logits = _transpose_batch_time(next_layer) 
+    '''
     sampled_output = None
     if sample:
       softmax = tf.nn.softmax(logits, dim=-1, name=None) # [None, self.V]
@@ -317,11 +317,11 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         sample_id_list.append(sample_id)
       sample_ids_sampled = tf.stack(sample_id_list, axis=1)
       sampled_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids_sampled)
-    
+    '''
     
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32) # greedy...
     greedy_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids) 
-    return greedy_output, sampled_output
+    return greedy_output
     
     
 
