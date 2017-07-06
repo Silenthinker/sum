@@ -30,6 +30,7 @@ from tensorflow.python.util import nest  # pylint: disable=E0611
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import math_ops
 
+from seq2seq import graph_utils
 from seq2seq.graph_module import GraphModule
 from seq2seq.configurable import Configurable
 from seq2seq.contrib.seq2seq.decoder import Decoder, dynamic_decode
@@ -175,17 +176,17 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
   def _create_position_embedding(self, lengths, maxlen):
 
     # Slice to size of current sequence
-    pe_slice = self.pos_embed[2:maxlen+2, :]
+    pe_slice = self.pos_embed[2:maxlen+2, :] # [T, embed_size]
     # Replicate encodings for each element in the batch
-    batch_size = tf.shape(lengths)[0]
-    pe_batch = tf.tile([pe_slice], [batch_size, 1, 1])
+    batch_size = tf.shape(lengths)[0] # B
+    pe_batch = tf.tile([pe_slice], [batch_size, 1, 1]) # [B, T, embed_size]
 
     # Mask out positions that are padded
     positions_mask = tf.sequence_mask(
-        lengths=lengths, maxlen=maxlen, dtype=tf.float32)
-    positions_embed = pe_batch * tf.expand_dims(positions_mask, 2)
+        lengths=lengths, maxlen=maxlen, dtype=tf.float32) # [B, T]
+    positions_embed = pe_batch * tf.expand_dims(positions_mask, 2) # [B, T, 1] * [B, T, embed_size]
 
-    return positions_embed
+    return positions_embed # [B, T, embed_size]
   
   def add_position_embedding(self, inputs, time):
     seq_pos_embed = self.pos_embed[2:time+1+2,:]  
@@ -284,7 +285,38 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     
     return outputs, final_state
 
-  def conv_decoder_train(self, enc_output, labels, sequence_length, sample=False):
+  def conv_decoder_train_infer(self, enc_output, labels, sequence_length):
+    '''
+    Infer during training, return greedy and sampled generation
+    Args:
+      enc_output: []
+    '''
+    with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+      embed_size = labels.get_shape().as_list()[-1] # here, labels = tf.nn.embedding_lookup(decoder.target_embedding,labels["target_ids"])[:,:-1] # [B, T]
+      if self.params["position_embeddings.enable"]:
+        positions_embed = self._create_position_embedding( # [B, T, embed_size]
+            lengths=sequence_length,
+            maxlen=tf.shape(labels)[1])
+        labels = self._combiner_fn(labels, positions_embed) # [B, T, embed_size]
+       
+      # Apply dropout to embeddings
+      inputs = tf.contrib.layers.dropout(
+          inputs=labels,
+          keep_prob=self.params["embedding_dropout_keep_prob"],
+          is_training=self.mode == tf.contrib.learn.ModeKeys.TRAIN) # [B, T, embed_size]
+      
+      next_layer = self.conv_block(enc_output, inputs, True) # [B, T, V]
+        
+         
+      logits = _transpose_batch_time(next_layer) # [T, B, V]
+      
+      sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32) # greedy...  [T, B]
+      greedy_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids) 
+      conv_dec_dict = {"inputs": inputs, "next_layer": next_layer, "logits": logits, "enc_output": enc_output}
+      graph_utils.add_dict_to_collection(conv_dec_dict, "conv_dec_dict")
+    return greedy_output
+
+  def conv_decoder_train(self, enc_output, labels, sequence_length):
     '''
     If sample is set True, returns two ConvDecoderOutput: greedy and sampled, respectively;
     otherwise, returns greedy only, the sampled is None
@@ -322,10 +354,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32) # greedy...
     greedy_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids) 
     return greedy_output
-    
-    
 
-  def _build(self, enc_output, labels=None, sequence_length=None, sample=False):
+  def _build(self, enc_output, labels=None, sequence_length=None):
     
     if not self.initial_state:
       self._setup(initial_state=enc_output)
@@ -335,6 +365,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       return self.finalize(outputs, states)
     else:
       with tf.variable_scope("decoder"):  # when infer, dynamic decode will add decoder scope, so we add here to keep it the same  
-        outputs = self.conv_decoder_train(enc_output=enc_output, labels=labels, sequence_length=sequence_length, sample=sample)
+        outputs = self.conv_decoder_train(enc_output=enc_output, labels=labels, sequence_length=sequence_length)
         states = None
-        return outputs, states
+        outputs_infer = self.conv_decoder_train_infer(enc_output=enc_output, labels=labels, sequence_length=sequence_length)
+        return outputs, outputs_infer

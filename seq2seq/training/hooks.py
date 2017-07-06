@@ -447,6 +447,12 @@ class TrainUpdateLoss(TrainingHook):
     # compute bleu scores for sampled generator and greedy generator
     r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
     b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
-
-    # tf.logging.info(self._session.run(graph_utils.get_dict_from_collection("loss")["loss"]))
+    conv_dec_dict = graph_utils.get_dict_from_collection("conv_dec_dict")
+    for k, v in conv_dec_dict.items():
+      res = self._session.run(v)
+      if k == "enc_output":
+        for n, m in v._asdict().items():
+          tf.logging.info("{}: {}".format(n, m.shape))
+      else:
+        tf.logging.info("{}: {}".format(k, res.shape))
     

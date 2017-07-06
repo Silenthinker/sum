@@ -300,7 +300,7 @@ class Seq2SeqModel(ModelBase):
     encoder_output = self.encode(features, labels)
     # decoder_output, _, = self.decode(encoder_output, features, labels, sample=False)
     
-    decoder_outputs, _ = self.decode(encoder_output, features, labels, sample=True)
+    decoder_outputs, decoder_outputs_infer = self.decode(encoder_output, features, labels)
     
     
     
@@ -320,16 +320,15 @@ class Seq2SeqModel(ModelBase):
           features=features,
           labels=labels,
           losses=losses)
-      # predictions_sampled = self._create_predictions(
-      #     decoder_output=decoder_output_sampled,
-      #     features=features,
-      #     labels=labels,
-      #     losses=losses)
+      predictions_sampled = self._create_predictions(
+          decoder_output=decoder_outputs_infer,
+          features=features,
+          labels=labels,
+          losses=losses)
       
       # We add "useful" tensors to the graph collection so that we
       # can easly find them in our hooks/monitors.
       graph_utils.add_dict_to_collection(predictions, "predictions")
-      predictions_sampled = predictions
       graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
 
       losses, loss = self.compute_loss(decoder_outputs, features, labels)
