@@ -285,14 +285,26 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     
     return outputs, final_state
 
-  def conv_decoder_train_infer(self, enc_output, labels, sequence_length):
+  def conv_decoder_train_infer(self, enc_output, sequence_length):
     '''
     Infer during training, return greedy and sampled generation
     Args:
       enc_output: []
     '''
+    EncoderOutput = namedtuple(
+      "EncoderOutput",
+      "outputs final_state attention_values attention_values_length")
     with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+      start_tokens_batch = tf.fill([1], self.start_tokens)
+      labels = tf.nn.embedding_lookup(self.target_embedding, start_tokens_batch)
+      labels = tf.expand_dims(labels, 1)
       embed_size = labels.get_shape().as_list()[-1] # here, labels = tf.nn.embedding_lookup(decoder.target_embedding,labels["target_ids"])[:,:-1] # [B, T]
+      sequence_length = tf.ones(sequence_length.shape)
+      enc_output = EncoderOutput(
+        outputs=tf.expand_dims(enc_output.outputs[:, 0, :], 1),
+        final_state=enc_output.final_state,
+        attention_values=tf.expand_dims(enc_output.attention_values[:, 0, :], 1),
+        attention_values_length=tf.ones(sequence_length.shape))
       if self.params["position_embeddings.enable"]:
         positions_embed = self._create_position_embedding( # [B, T, embed_size]
             lengths=sequence_length,
@@ -367,5 +379,5 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       with tf.variable_scope("decoder"):  # when infer, dynamic decode will add decoder scope, so we add here to keep it the same  
         outputs = self.conv_decoder_train(enc_output=enc_output, labels=labels, sequence_length=sequence_length)
         states = None
-        outputs_infer = self.conv_decoder_train_infer(enc_output=enc_output, labels=labels, sequence_length=sequence_length)
+        outputs_infer = self.conv_decoder_train_infer(enc_output=enc_output, sequence_length=sequence_length)
         return outputs, outputs_infer
