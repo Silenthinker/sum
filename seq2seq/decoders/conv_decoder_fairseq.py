@@ -371,8 +371,6 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     maximum_iterations = self.params["max_decode_length"]
     batch_size = 1 #enc_output.attention_values_length.get_shape().as_list()[0]
     batch_num = enc_output.attention_values_length.get_shape().as_list()[0] 
-    tf.logging.info("batch_num: {}".format(batch_num))
-    batch_num = 1
     output_list = []
     with tf.variable_scope(tf.get_variable_scope(), reuse=True):
       for i in range(batch_num):

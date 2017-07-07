@@ -118,6 +118,17 @@ class Seq2SeqModel(ModelBase):
       predictions["predicted_tokens"] = predicted_tokens
 
     return predictions
+  def _create_predictions_from_list(self, decoder_output_list):
+    '''
+    Args:
+      decoder_output_list: list of ConvDecoderOutput, which is nameTuple that has fields "logits", "predicted_ids"
+    '''
+    predictions = {}
+    vocab_tables = graph_utils.get_dict_from_collection("vocab_tables")
+    target_id_to_vocab = vocab_tables["target_id_to_vocab"]
+    predicted_tokens_list = [target_id_to_vocab.lookup(tf.to_int64(output.predicted_ids)) for output in decoder_output_list]
+    predictions["predicted_token_list"] = predicted_tokens_list
+    return predictions
 
   def batch_size(self, features, labels):
     """Returns the batch size of the curren batch based on the passed
@@ -332,12 +343,13 @@ class Seq2SeqModel(ModelBase):
       #     features=features,
       #     labels=labels,
       #     losses=losses)
-      
+      predictions_greedy = self._create_predictions_from_list(decoder_outputs_greedy)
+      predictions_sampled = self._create_predictions_from_list(decoder_outputs_sampled)
       # We add "useful" tensors to the graph collection so that we
       # can easly find them in our hooks/monitors.
       graph_utils.add_dict_to_collection(predictions, "predictions")
-      # graph_utils.add_dict_to_collection(predictions_greedy, "predictions_greedy")
-      # graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
+      graph_utils.add_dict_to_collection(predictions_greedy, "predictions_greedy")
+      graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
 
       losses, loss = self.compute_loss(decoder_outputs, features, labels)
       
