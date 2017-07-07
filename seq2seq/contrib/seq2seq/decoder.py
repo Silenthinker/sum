@@ -80,11 +80,12 @@ def _transpose_batch_time(x):
 @six.add_metaclass(abc.ABCMeta)
 class Decoder(object):
   """An RNN Decoder abstract interface object."""
-
+  '''
   @property
   def batch_size(self):
     """The batch size of the inputs returned by `sample`."""
     raise NotImplementedError
+  '''
 
   @property
   def output_size(self):
@@ -146,7 +147,8 @@ def dynamic_decode(decoder,
                    maximum_iterations=None,
                    parallel_iterations=32,
                    swap_memory=False,
-                   scope=None):
+                   scope=None,
+                   sample=False):
   """Perform dynamic decoding with `decoder`.
 
   Args:
@@ -166,7 +168,7 @@ def dynamic_decode(decoder,
     parallel_iterations: Argument passed to `tf.while_loop`.
     swap_memory: Argument passed to `tf.while_loop`.
     scope: Optional variable scope to use.
-
+    * sample: False for greedy generation [False]
   Returns:
     `(final_outputs, final_state)`.
 
@@ -237,7 +239,7 @@ def dynamic_decode(decoder,
         `(time + 1, outputs_ta, next_state, next_inputs, next_finished)`.
       """
       (next_outputs, decoder_state, next_inputs,
-       decoder_finished) = decoder.step(time, inputs, state)
+       decoder_finished) = decoder.step(time, inputs, state, sample=sample)
       next_finished = math_ops.logical_or(decoder_finished, finished)
       if maximum_iterations is not None:
         next_finished = math_ops.logical_or(

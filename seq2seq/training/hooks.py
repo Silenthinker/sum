@@ -184,6 +184,7 @@ class TrainSampleHook(TrainingHook):
     self._iter_count = 0
     self._global_step = tf.train.get_global_step()
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
+    self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
     self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
     # Create the sample directory
     if self._sample_dir is not None:
@@ -191,9 +192,10 @@ class TrainSampleHook(TrainingHook):
 
   def before_run(self, _run_context):
     self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
-    if self._should_trigger:
+    if self._should_trigger or True:
       fetches = {
           "predicted_tokens": self._pred_dict["predicted_tokens"],
+          "predicted_tokens_greedy": self._pred_dict_greedy["predicted_tokens"],
           "predicted_tokens_sampled": self._pred_dict_sampled["predicted_tokens"],
           "target_words": self._pred_dict["labels.target_tokens"],
           "target_len": self._pred_dict["labels.target_len"]
@@ -207,7 +209,7 @@ class TrainSampleHook(TrainingHook):
     result_dict, step = run_values.results
     self._iter_count = step
 
-    if not self._should_trigger:
+    if not self._should_trigger and False:
       return None
     # Convert dict of lists to list of dicts
     result_dicts = [
@@ -220,18 +222,22 @@ class TrainSampleHook(TrainingHook):
     for result in result_dicts:
       target_len = result["target_len"]
       predicted_slice = result["predicted_tokens"][:target_len - 1]
+      predicted_slice_greedy = result["predicted_tokens_greedy"][:target_len - 1]
       predicted_slice_sampled = result["predicted_tokens_sampled"][:target_len - 1]
       target_slice = result["target_words"][1:target_len]
       predicted_str = self._target_delimiter.encode("utf-8").join(
           predicted_slice).decode("utf-8")
+      predicted_str_greedy = self._target_delimiter.encode("utf-8").join(
+          predicted_slice_greedy).decode("utf-8")
       predicted_str_sampled = self._target_delimiter.encode("utf-8").join(
           predicted_slice_sampled).decode("utf-8")
       result_str += predicted_str + "\n"
+      result_str += predicted_str_greedy + "\n"
       result_str += predicted_str_sampled + "\n"
       target_str = self._target_delimiter.encode("utf-8").join(
           target_slice).decode("utf-8")
       result_str += target_str + "\n"
-      result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str]))
+      result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str_greedy]))
       result_str += "BLEU of pred_sampled: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str_sampled]))
     result_str += ("=" * 100) + "\n\n"
     tf.logging.info(result_str)
@@ -447,6 +453,8 @@ class TrainUpdateLoss(TrainingHook):
     # compute bleu scores for sampled generator and greedy generator
     r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
     b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
+    
+    
     conv_dec_dict = graph_utils.get_dict_from_collection("conv_dec_dict")
     for k, v in conv_dec_dict.items():
       res = self._session.run(v)
