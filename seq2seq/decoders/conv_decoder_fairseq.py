@@ -309,7 +309,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     Args:
       enc_output: []
     '''
-    
+    '''
     EncoderOutput = namedtuple(
       "EncoderOutput",
       "outputs final_state attention_values attention_values_length")
@@ -318,7 +318,6 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         start_tokens_batch = tf.fill([1], self.start_tokens)
         labels = tf.nn.embedding_lookup(self.target_embedding, start_tokens_batch)
         labels = tf.expand_dims(labels, 1)
-        temp_labels = labels
         embed_size = labels.get_shape().as_list()[-1] # here, labels = tf.nn.embedding_lookup(decoder.target_embedding,labels["target_ids"])[:,:-1] # [B, T]
         sequence_length = tf.ones(sequence_length.shape)
         enc_output = EncoderOutput(
@@ -345,7 +344,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         
         sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32) # greedy...  [T, B]
       greedy_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids) 
-      conv_dec_dict = {"inputs": inputs, "next_layer": next_layer, "logits": logits, "enc_output": enc_output, "temp_labels": temp_labels}
+      conv_dec_dict = {"inputs": inputs, "next_layer": next_layer, "logits": logits, "enc_output": enc_output}
       graph_utils.add_dict_to_collection(conv_dec_dict, "conv_dec_dict")
     return greedy_output
     '''
@@ -369,7 +368,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     tf.logging.info("beam_width: {}".format(self.batch_size))
     tf.logging.info("config.beam_width: {}".format(self.config.beam_width))
     return outputs
-    '''
+    
 
   def conv_decoder_train(self, enc_output, labels, sequence_length):
     '''
