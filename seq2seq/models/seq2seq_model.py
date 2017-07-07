@@ -333,16 +333,7 @@ class Seq2SeqModel(ModelBase):
           features=features,
           labels=labels,
           losses=losses)
-      # predictions_greedy = self._create_predictions(
-      #     decoder_output=decoder_outputs_greedy,
-      #     features=features,
-      #     labels=labels,
-      #     losses=losses)
-      # predictions_sampled = self._create_predictions(
-      #     decoder_output=decoder_outputs_sampled,
-      #     features=features,
-      #     labels=labels,
-      #     losses=losses)
+
       predictions_greedy = self._create_predictions_from_list(decoder_outputs_greedy)
       predictions_sampled = self._create_predictions_from_list(decoder_outputs_sampled)
       # We add "useful" tensors to the graph collection so that we
@@ -353,32 +344,14 @@ class Seq2SeqModel(ModelBase):
 
       losses, loss = self.compute_loss(decoder_outputs, features, labels)
       
-      ##############
-      '''
+      
       rewards = tf.placeholder(tf.float32, [None])
       base_line = tf.placeholder(tf.float32, [None])
       r  =  rewards - base_line
 
-      grad_mask = tf.placeholder(tf.int32, [None, 32]) # n_time_step = 32;
-      t1_mul = tf.to_float(tf.transpose(grad_mask, [1, 0])) # [T, B]
-      norm = tf.reduce_sum(t1_mul) # normalization...
-      mask_loss = losses * t1_mul # loss: [T, B]
+      sum_loss = tf.reduce_sum(tf.multiply(losses, (rewards - base_line))) # x * y element-wise, give [T, B]
+      graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses}, "losses")
 
-      sum_loss = tf.reduce_sum(tf.multiply(mask_loss, (rewards - base_line)))/ norm # x * y element-wise, give [T, B]
-      '''
-      ##################
-      
-      # if not decoder.initial_state:
-      #   decoder._setup(initial_state=encoder_output)
-      # outputs, states = decoder.conv_decoder_infer()
-      # decoder_output_greedy, _ = decoder.finalize(outputs, states)
-      
-      # predictions_greedy = self._create_predictions(
-      #   decoder_output=decoder_output_greedy,
-      #   features=features,
-      #   labels=labels)
-      
-      ##################
       train_op = None
       if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
         gradient_multipliers = {}

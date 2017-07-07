@@ -372,6 +372,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     batch_size = 1 #enc_output.attention_values_length.get_shape().as_list()[0]
     batch_num = enc_output.attention_values_length.get_shape().as_list()[0] 
     output_list = []
+    batch_num = 1
     with tf.variable_scope(tf.get_variable_scope(), reuse=True):
       for i in range(batch_num):
         enc_output_slice = EncoderOutput(

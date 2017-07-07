@@ -24,7 +24,11 @@ def decode_tokens_for_blue(tokens, delimiter):
     mask = []
     for t in range(T):
       if tokens.ndim == 1:
-        word = tokens[t].decode("utf-8")
+        try:
+          word = tokens[t].decode("utf-8")
+        except AttributeError:
+          print("Error source: {}".format(tokens))
+
       else:
         word = tokens[i, t].decode("utf-8")
       if word == 'SEQUENCE_END':
@@ -49,3 +53,12 @@ def flattenList(l):
   Flatten l: [[1],[2], [3]] to [1,2,3]
   '''
   return [x[0] for x in l]
+
+def format_predictions_infer(predictions, delimiter):
+  '''
+  Format input of form [[[b this], [b is], [b it]]], [[b that], [b is], [b it]]]] to [[this is it], [that is it]]
+  '''
+  predictions_flattened = [flattenList(x) for x in predictions]
+  mask_len = [len(x) for x in predictions_flattened]
+  predictions_formatted = [delimiter.encode("utf-8").join(x).decode("utf-8") for x in predictions_flattened]
+  return predictions_formatted, mask_len

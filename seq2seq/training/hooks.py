@@ -184,8 +184,8 @@ class TrainSampleHook(TrainingHook):
     self._iter_count = 0
     self._global_step = tf.train.get_global_step()
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
-    # self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
-    # self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
+    self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
+    self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
     # Create the sample directory
     if self._sample_dir is not None:
       gfile.MakeDirs(self._sample_dir)
@@ -195,8 +195,8 @@ class TrainSampleHook(TrainingHook):
     if self._should_trigger:
       fetches = {
           "predicted_tokens": self._pred_dict["predicted_tokens"],
-          # "predicted_tokens_greedy": self._pred_dict_greedy["predicted_tokens"],
-          # "predicted_tokens_sampled": self._pred_dict_sampled["predicted_tokens"],
+          "predicted_tokens_greedy": self._pred_dict_greedy["predicted_token_list"],
+          "predicted_tokens_sampled": self._pred_dict_sampled["predicted_token_list"],
           "target_words": self._pred_dict["labels.target_tokens"],
           "target_len": self._pred_dict["labels.target_len"]
       }
@@ -213,30 +213,31 @@ class TrainSampleHook(TrainingHook):
       return None
     # Convert dict of lists to list of dicts
     result_dicts = utils.convertDict(result_dict)
+    
     # Print results
+    
     result_str = ""
-    result_str += "Prediction followed by Target @ Step {}\n".format(step)
     result_str += ("=" * 100) + "\n"
     for result in result_dicts:
       target_len = result["target_len"]
       predicted_slice = result["predicted_tokens"][:target_len - 1]
-      # predicted_slice_greedy = result["predicted_tokens_greedy"][:target_len - 1]
-      # predicted_slice_sampled = result["predicted_tokens_sampled"][:target_len - 1]
+      predicted_slice_greedy = utils.flattenList(result["predicted_tokens_greedy"])
+      predicted_slice_sampled = utils.flattenList(result["predicted_tokens_sampled"])
       target_slice = result["target_words"][1:target_len]
       predicted_str = self._target_delimiter.encode("utf-8").join(
           predicted_slice).decode("utf-8")
-      # predicted_str_greedy = self._target_delimiter.encode("utf-8").join(
-      #     predicted_slice_greedy).decode("utf-8")
-      # predicted_str_sampled = self._target_delimiter.encode("utf-8").join(
-      #     predicted_slice_sampled).decode("utf-8")
+      predicted_str_greedy = self._target_delimiter.encode("utf-8").join(
+          predicted_slice_greedy).decode("utf-8")
+      predicted_str_sampled = self._target_delimiter.encode("utf-8").join(
+          predicted_slice_sampled).decode("utf-8")
       result_str += predicted_str + "\n"
-      # result_str += predicted_str_greedy + "\n"
-      # result_str += predicted_str_sampled + "\n"
+      result_str += predicted_str_greedy + "\n"
+      result_str += predicted_str_sampled + "\n"
       target_str = self._target_delimiter.encode("utf-8").join(
           target_slice).decode("utf-8")
-      result_str += target_str + "\n\n"
-      # result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str_greedy]))
-      # result_str += "BLEU of pred_sampled: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str_sampled]))
+      result_str += target_str + "\n"
+      result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str_greedy]))
+      result_str += "BLEU of pred_sampled: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str_sampled]))
     result_str += ("=" * 100) + "\n\n"
     tf.logging.info(result_str)
     if self._sample_dir:
@@ -424,11 +425,11 @@ class TrainUpdateLoss(TrainingHook):
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
     self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
     self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
-    
+    self._losses_dict = graph_utils.get_dict_from_collection("losses")
 
   def before_run(self, _run_context):
     fetches = {
-        "predicted_tokens": self._pred_dict["predicted_tokens"],
+        "losses": self._losses_dict["losses"],
         "predicted_tokens_greedy": self._pred_dict_greedy["predicted_token_list"],
         "predicted_tokens_sampled": self._pred_dict_sampled["predicted_token_list"],
         "target_words": self._pred_dict["labels.target_tokens"],
@@ -440,45 +441,25 @@ class TrainUpdateLoss(TrainingHook):
 
   def after_run(self, _run_context, run_values):
     result_dict, step = run_values.results
-    result_dicts = utils.convertDict(result_dict)
-    # Print results
-    
-    result_str = ""
-    result_str += ("=" * 100) + "\n"
-    for result in result_dicts:
-      target_len = result["target_len"]
-      predicted_slice = result["predicted_tokens"][:target_len - 1]
-      predicted_slice_greedy = utils.flattenList(result["predicted_tokens_greedy"])
-      predicted_slice_sampled = utils.flattenList(result["predicted_tokens_sampled"])
-      target_slice = result["target_words"][1:target_len]
-      predicted_str = self._target_delimiter.encode("utf-8").join(
-          predicted_slice).decode("utf-8")
-      predicted_str_greedy = self._target_delimiter.encode("utf-8").join(
-          predicted_slice_greedy).decode("utf-8")
-      predicted_str_sampled = self._target_delimiter.encode("utf-8").join(
-          predicted_slice_sampled).decode("utf-8")
-      result_str += predicted_str + "\n"
-      result_str += predicted_str_greedy + "\n"
-      result_str += predicted_str_sampled + "\n"
-      target_str = self._target_delimiter.encode("utf-8").join(
-          target_slice).decode("utf-8")
-      result_str += target_str + "\n"
-      result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str_greedy]))
-      result_str += "BLEU of pred_sampled: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str_sampled]))
-    result_str += ("=" * 100) + "\n\n"
-    tf.logging.info(result_str)
-    
-    
-    """
+
+    # Get results
+    losses = result_dict["losses"]
+    target_words = result_dict["target_words"]
+    decoded_greedy, _ = utils.format_predictions_infer(result_dict["predicted_tokens_greedy"], self._target_delimiter)
+    decoded_sampled, mask_len = utils.format_predictions_infer(result_dict["predicted_tokens_sampled"], self._target_delimiter)
+
     # decode tokens from byte to string and prepare for blue evaluation 
     _, ref_decoded = utils.decode_tokens_for_blue(target_words, self._target_delimiter)
     ref_decoded = [[seq] for seq in ref_decoded]
-    _, decoded_greedy = utils.decode_tokens_for_blue(predicted_tokens_greedy, self._target_delimiter)
-    masks, decoded_sampled = utils.decode_tokens_for_blue(predicted_tokens_sampled, self._target_delimiter)
+    
     # compute bleu scores for sampled generator and greedy generator
     r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
     b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
-    """
+    '''
+    # tf.logging.info("greedy: {}".format(decoded_greedy))
+    tf.logging.info("r: {}".format(r))
+    tf.logging.info("b: {}".format(b))
+    '''
     '''
     conv_dec_dict = graph_utils.get_dict_from_collection("conv_dec_dict")
     for k, v in conv_dec_dict.items():
