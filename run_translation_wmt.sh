@@ -17,7 +17,7 @@ mkdir -p $MODEL_DIR
 
 python -m bin.train \
   --config_paths="
-      ./example_configs/conv_seq2seq.yml,
+      ./example_configs/conv_seq2seq_small.yml,
       ./example_configs/train_seq2seq.yml,
       ./example_configs/text_metrics_bpe.yml" \
   --model_params "

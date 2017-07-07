@@ -198,7 +198,6 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
   
     length = tf.cast(tf.shape(encoder_output_c), tf.float32)
     att_out = tf.matmul(att_score, encoder_output_c) * length[1] * tf.sqrt(1.0/length[1])    #M*N1*N2  ** M*N2*K   --> M*N1*k
-     
     att_out = linear_mapping_weightnorm(att_out, decoder_hidden.get_shape().as_list()[-1], var_scope_name="linear_mapping_att_out")
   return att_out
 

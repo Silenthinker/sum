@@ -299,8 +299,10 @@ class Seq2SeqModel(ModelBase):
 
     encoder_output = self.encode(features, labels)
     # decoder_output, _, = self.decode(encoder_output, features, labels, sample=False)
-    
-    decoder_outputs, decoder_outputs_greedy, decoder_outputs_sampled = self.decode(encoder_output, features, labels)
+    if self.mode == tf.contrib.learn.ModeKeys.INFER:
+      decoder_outputs, _ = self.decode(encoder_output, features, labels)  
+    else:
+      decoder_outputs, decoder_outputs_greedy, decoder_outputs_sampled = self.decode(encoder_output, features, labels)
     
     
     
@@ -311,7 +313,7 @@ class Seq2SeqModel(ModelBase):
       train_op = None
       
       predictions = self._create_predictions(
-          decoder_output=decoder_output_greedy, features=features, labels=labels)
+          decoder_output=decoder_outputs, features=features, labels=labels)
       graph_utils.add_dict_to_collection(predictions, "predictions")
     else:
       losses = None
@@ -320,22 +322,22 @@ class Seq2SeqModel(ModelBase):
           features=features,
           labels=labels,
           losses=losses)
-      predictions_greedy = self._create_predictions(
-          decoder_output=decoder_outputs_greedy,
-          features=features,
-          labels=labels,
-          losses=losses)
-      predictions_sampled = self._create_predictions(
-          decoder_output=decoder_outputs_sampled,
-          features=features,
-          labels=labels,
-          losses=losses)
+      # predictions_greedy = self._create_predictions(
+      #     decoder_output=decoder_outputs_greedy,
+      #     features=features,
+      #     labels=labels,
+      #     losses=losses)
+      # predictions_sampled = self._create_predictions(
+      #     decoder_output=decoder_outputs_sampled,
+      #     features=features,
+      #     labels=labels,
+      #     losses=losses)
       
       # We add "useful" tensors to the graph collection so that we
       # can easly find them in our hooks/monitors.
       graph_utils.add_dict_to_collection(predictions, "predictions")
-      graph_utils.add_dict_to_collection(predictions_greedy, "predictions_greedy")
-      graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
+      # graph_utils.add_dict_to_collection(predictions_greedy, "predictions_greedy")
+      # graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
 
       losses, loss = self.compute_loss(decoder_outputs, features, labels)
       

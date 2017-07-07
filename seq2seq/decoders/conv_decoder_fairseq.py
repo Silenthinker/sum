@@ -142,24 +142,23 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
   def _setup(self, initial_state, helper=None):
     self.initial_state = initial_state
   
-  def initialize(self, name=None):
+  def initialize(self, batch_size, name=None):
     
-    finished = tf.tile([False], [self.batch_size])
+    finished = tf.tile([False], [batch_size])
     
-    start_tokens_batch = tf.fill([self.batch_size], self.start_tokens)
+    start_tokens_batch = tf.fill([batch_size], self.start_tokens)
     first_inputs = tf.nn.embedding_lookup(self.target_embedding, start_tokens_batch)
     first_inputs = tf.expand_dims(first_inputs, 1)
-    zeros_padding = tf.zeros([self.batch_size, self.params['max_decode_length']-1, self.target_embedding.get_shape().as_list()[-1]])
+    zeros_padding = tf.zeros([batch_size, self.params['max_decode_length']-1, self.target_embedding.get_shape().as_list()[-1]])
     first_inputs = tf.concat([first_inputs, zeros_padding], axis=1)
     
-    outputs = tf.tile(self.initial_state.outputs, [self.batch_size,1,1]) 
-    attention_values = tf.tile(self.initial_state.attention_values, [self.batch_size,1,1]) 
+    outputs = tf.tile(self.initial_state.outputs, [batch_size,1,1]) 
+    attention_values = tf.tile(self.initial_state.attention_values, [batch_size,1,1]) 
     enc_output = EncoderOutput(
         outputs=outputs,
         final_state=self.initial_state.final_state,
         attention_values=attention_values,
         attention_values_length=self.initial_state.attention_values_length)
-    
     
     return finished, first_inputs, enc_output
   
@@ -167,13 +166,13 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
  
     return outputs, final_state
    
-  def next_inputs(self, sample_ids,name=None):
+  def next_inputs(self, sample_ids, batch_size, name=None):
     finished = math_ops.equal(sample_ids, self.config.eos_token)
     all_finished = math_ops.reduce_all(finished)
     next_inputs = control_flow_ops.cond(
         all_finished,
         # If we're finished, the next_inputs value doesn't matter
-        lambda:  tf.nn.embedding_lookup(self.target_embedding, tf.tile([self.config.eos_token], [self.batch_size])),
+        lambda:  tf.nn.embedding_lookup(self.target_embedding, tf.tile([self.config.eos_token], [batch_size])),
         lambda: tf.nn.embedding_lookup(self.target_embedding, sample_ids))
     return all_finished, next_inputs
 
@@ -192,14 +191,14 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
 
     return positions_embed # [B, T, embed_size]
   
-  def add_position_embedding(self, inputs, time):
+  def add_position_embedding(self, inputs, time, batch_size):
     seq_pos_embed = self.pos_embed[2:time+1+2,:]  
     seq_pos_embed = tf.expand_dims(seq_pos_embed, axis=0) 
-    seq_pos_embed_batch = tf.tile(seq_pos_embed, [self.batch_size,1,1])
+    seq_pos_embed_batch = tf.tile(seq_pos_embed, [batch_size, 1, 1])
     
     return self._combiner_fn(inputs, seq_pos_embed_batch)
 
-  def step(self, time, inputs, state, name=None, sample=False):
+  def step(self, time, inputs, state, batch_size, name=None, sample=False):
     '''
     Args:
       sample: True to generate by sampling; otherwise greedily
@@ -207,7 +206,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
    
     cur_inputs = inputs[:,0:time+1,:] 
     zeros_padding = inputs[:,time+2:,:] 
-    cur_inputs_pos = self.add_position_embedding(cur_inputs, time)
+    cur_inputs_pos = self.add_position_embedding(cur_inputs, time, batch_size)
     
     enc_output = state 
     logits = self.infer_conv_block(enc_output, cur_inputs_pos, is_train=False) # [1, V]
@@ -221,11 +220,11 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32) # greedy...
     ###
 
-    finished, next_inputs = self.next_inputs(sample_ids=sample_ids)
-    next_inputs = tf.reshape(next_inputs, [self.batch_size, 1, inputs.get_shape().as_list()[-1]])
+    finished, next_inputs = self.next_inputs(sample_ids=sample_ids, batch_size=batch_size)
+    next_inputs = tf.reshape(next_inputs, [batch_size, 1, inputs.get_shape().as_list()[-1]])
     next_inputs = tf.concat([cur_inputs, next_inputs], axis=1)
     next_inputs = tf.concat([next_inputs, zeros_padding], axis=1)
-    next_inputs.set_shape([self.batch_size, self.params['max_decode_length'], inputs.get_shape().as_list()[-1]])
+    next_inputs.set_shape([batch_size, self.params['max_decode_length'], inputs.get_shape().as_list()[-1]])
     outputs = ConvDecoderOutput(
         logits=logits,
         predicted_ids=sample_ids)
@@ -280,9 +279,9 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       
     return next_layer 
  
-  def init_params_in_loop(self):
+  def init_params_in_loop(self, batch_size):
     with tf.variable_scope("decoder"):
-      initial_finished, initial_inputs, initial_state = self.initialize()
+      initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
       enc_output = initial_state
       logits = self.infer_conv_block(enc_output, initial_inputs, is_train=False)
       
@@ -292,8 +291,14 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
   
   def conv_decoder_infer(self):
     maximum_iterations = self.params["max_decode_length"]
-    
-    self.init_params_in_loop()
+    batch_size = 1
+    # self.init_params_in_loop(batch_size)
+    with tf.variable_scope("decoder"):
+      initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
+      enc_output = initial_state
+      logits = self.infer_conv_block(enc_output, initial_inputs, is_train=False)
+    conv_dec_dict = {"initial_inputs": initial_inputs, "enc_output": initial_state, "logits": logits}
+    graph_utils.add_dict_to_collection(conv_dec_dict, "conv_dec_dict")
     tf.get_variable_scope().reuse_variables()    
     outputs, final_state = dynamic_decode(
         decoder=self,
@@ -306,6 +311,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
   def conv_decoder_train_infer(self, enc_output, sequence_length, sample=False):
     '''
     Infer during training, return greedy and sampled generation
+    in this mode, sentences are generated one by one (batch_size = 1)
+    total number of sentences is batch_num 
     Args:
       enc_output: []
     '''
@@ -318,6 +325,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         start_tokens_batch = tf.fill([1], self.start_tokens)
         labels = tf.nn.embedding_lookup(self.target_embedding, start_tokens_batch)
         labels = tf.expand_dims(labels, 1)
+        temp_labels = labels
         embed_size = labels.get_shape().as_list()[-1] # here, labels = tf.nn.embedding_lookup(decoder.target_embedding,labels["target_ids"])[:,:-1] # [B, T]
         sequence_length = tf.ones(sequence_length.shape)
         enc_output = EncoderOutput(
@@ -344,29 +352,50 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         
         sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32) # greedy...  [T, B]
       greedy_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids) 
-      conv_dec_dict = {"inputs": inputs, "next_layer": next_layer, "logits": logits, "enc_output": enc_output}
+      conv_dec_dict = {"inputs": inputs, "next_layer": next_layer, "logits": logits, "enc_output": enc_output, "temp_labels": temp_labels}
       graph_utils.add_dict_to_collection(conv_dec_dict, "conv_dec_dict")
     return greedy_output
     '''
+    """
+    def stackConvDecoderOutput(output_list):
+      '''
+      Stack list of ConvDecoderOutput
+      '''
+      logits_list = [x.logits for x in output_list]
+      predicted_ids_list = [x.predicted_ids for x in output_list]
+      logits_stacked = tf.concat(logits_list, 1) # [T, B, V]
+      predicted_ids_stacked = tf.concat(predicted_ids_list, 1) # [T, B]
+      return ConvDecoderOutput(logits=logits_stacked, predicted_ids=predicted_ids_stacked)
+    """
+
     maximum_iterations = self.params["max_decode_length"]
+    batch_size = 1 #enc_output.attention_values_length.get_shape().as_list()[0]
+    batch_num = enc_output.attention_values_length.get_shape().as_list()[0] 
+    tf.logging.info("batch_num: {}".format(batch_num))
+    batch_num = 1
+    output_list = []
     with tf.variable_scope(tf.get_variable_scope(), reuse=True):
-      with tf.variable_scope("decoder"):
-        initial_finished, initial_inputs, initial_state = self.initialize()
-        enc_output = initial_state
-        logits = self.infer_conv_block(enc_output, initial_inputs, is_train=False)
-        
-      outputs, final_state = dynamic_decode(
-          decoder=self,
-          output_time_major=True,
-          impute_finished=False,
-          maximum_iterations=maximum_iterations,
-          sample=sample)
-        
-    conv_dec_dict = {"initial_inputs": initial_inputs, "enc_output": initial_state, "logits": logits}
-    graph_utils.add_dict_to_collection(conv_dec_dict, "conv_dec_dict")
-    tf.logging.info("++++++++++++++")
-    tf.logging.info("beam_width: {}".format(self.batch_size))
-    tf.logging.info("config.beam_width: {}".format(self.config.beam_width))
+      for i in range(batch_num):
+        enc_output_slice = EncoderOutput(
+          outputs=tf.expand_dims(enc_output.outputs[i, :, :], 0),
+          final_state=enc_output.final_state[i, :],
+          attention_values=tf.expand_dims(enc_output.attention_values[i, :, :], 0),
+          attention_values_length=enc_output.attention_values_length[i])
+        self._setup(initial_state=enc_output_slice)
+        with tf.variable_scope("decoder"):
+          initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
+          logits = self.infer_conv_block(initial_state, initial_inputs, is_train=False)
+          
+        output, final_state = dynamic_decode(
+            decoder=self,
+            output_time_major=True,
+            impute_finished=False,
+            maximum_iterations=maximum_iterations,
+            sample=sample,
+            batch_size=batch_size)
+        output_list.append(output)
+      # outputs = stackConvDecoderOutput(output_list)
+      outputs = output_list # list of ConvDecoderOutput non-padded
     return outputs
     
 
@@ -392,18 +421,6 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       
        
     logits = _transpose_batch_time(next_layer) 
-    '''
-    sampled_output = None
-    if sample:
-      softmax = tf.nn.softmax(logits, dim=-1, name=None) # [None, self.V]
-      sample_id_list = []
-      for i in range(32):
-        sample_id = tf.multinomial(tf.log(tf.clip_by_value(softmax[:, i, :], 1e-20, 1.0)), 1) # [None, 1]
-        sample_id = tf.cast(tf.reshape(sample_id, [-1]), dtypes.int32) # [None]
-        sample_id_list.append(sample_id)
-      sample_ids_sampled = tf.stack(sample_id_list, axis=1)
-      sampled_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids_sampled)
-    '''
     
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32) # greedy...
     greedy_output = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids) 
@@ -421,13 +438,16 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       with tf.variable_scope("decoder"):  # when infer, dynamic decode will add decoder scope, so we add here to keep it the same  
         outputs = self.conv_decoder_train(enc_output=enc_output, labels=labels, sequence_length=sequence_length)
         states = None
+      '''
       sequence_length = tf.ones(sequence_length.shape)
+      
       enc_output = EncoderOutput(
         outputs=tf.expand_dims(enc_output.outputs[0, :, :], 0),
         final_state=enc_output.final_state[0, :],
         attention_values=tf.expand_dims(enc_output.attention_values[0, :, :], 0),
         attention_values_length=enc_output.attention_values_length[0])
       self._setup(initial_state=enc_output)
+      '''
       outputs_greedy = self.conv_decoder_train_infer(enc_output=enc_output, sequence_length=sequence_length, sample=False)
       outputs_sampled = self.conv_decoder_train_infer(enc_output=enc_output, sequence_length=sequence_length, sample=True)
       return outputs, outputs_greedy, outputs_sampled

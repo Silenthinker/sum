@@ -148,7 +148,8 @@ def dynamic_decode(decoder,
                    parallel_iterations=32,
                    swap_memory=False,
                    scope=None,
-                   sample=False):
+                   sample=False,
+                   batch_size=None):
   """Perform dynamic decoding with `decoder`.
 
   Args:
@@ -179,7 +180,8 @@ def dynamic_decode(decoder,
   if not isinstance(decoder, Decoder):
     raise TypeError("Expected decoder to be type Decoder, but saw: %s" %
                     type(decoder))
-
+  if batch_size is None:
+    batch_size = decoder.batch_size
   with variable_scope.variable_scope(scope or "decoder") as varscope:
     # Properly cache variable values inside the while_loop
     if varscope.caching_device is None:
@@ -191,7 +193,7 @@ def dynamic_decode(decoder,
       if maximum_iterations.get_shape().ndims != 0:
         raise ValueError("maximum_iterations must be a scalar")
 
-    initial_finished, initial_inputs, initial_state = decoder.initialize()
+    initial_finished, initial_inputs, initial_state = decoder.initialize(batch_size)
 
     zero_outputs = _create_zero_outputs(decoder.output_size,
                                         decoder.output_dtype,
@@ -239,7 +241,7 @@ def dynamic_decode(decoder,
         `(time + 1, outputs_ta, next_state, next_inputs, next_finished)`.
       """
       (next_outputs, decoder_state, next_inputs,
-       decoder_finished) = decoder.step(time, inputs, state, sample=sample)
+       decoder_finished) = decoder.step(time, inputs, state, sample=sample, batch_size=batch_size)
       next_finished = math_ops.logical_or(decoder_finished, finished)
       if maximum_iterations is not None:
         next_finished = math_ops.logical_or(
