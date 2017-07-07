@@ -350,8 +350,19 @@ class Seq2SeqModel(ModelBase):
       r  =  rewards - base_line
 
       sum_loss = tf.reduce_sum(tf.multiply(losses, (rewards - base_line))) # x * y element-wise, give [T, B]
-      graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses}, "losses")
 
+      train_op_rl = None
+      if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
+        gradient_multipliers = {}
+        # multiply the gradient by 1.0/(2*#att_layer)       
+        for i in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='model/conv_seq2seq/encode'):
+          if 'encode/W' in i.name or 'encode/pos' in i.name:
+            continue
+          tf.logging.info("tensor %s, name is %s", i, i.name)
+          gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
+        #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
+        train_op_rl = self._build_train_op(loss, gradient_multipliers=gradient_multipliers)
+      graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
       train_op = None
       if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
         gradient_multipliers = {}

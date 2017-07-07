@@ -425,7 +425,7 @@ class TrainUpdateLoss(TrainingHook):
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
     self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
     self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
-    self._losses_dict = graph_utils.get_dict_from_collection("losses")
+    self._losses_dict = graph_utils.get_dict_from_collection("train")
 
   def before_run(self, _run_context):
     fetches = {
@@ -455,6 +455,7 @@ class TrainUpdateLoss(TrainingHook):
     # compute bleu scores for sampled generator and greedy generator
     r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
     b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
+    
     '''
     # tf.logging.info("greedy: {}".format(decoded_greedy))
     tf.logging.info("r: {}".format(r))
