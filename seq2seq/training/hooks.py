@@ -458,19 +458,26 @@ class TrainUpdateLoss(TrainingHook):
     
     fetch = [
       self._train_dict["sum_loss"],
-      self._train_dict["train_op_rl"]
+      self._train_dict["train_op_rl"],
+      self._train_dict["log_prob_sum_sampled"],
+      self._train_dict["losses"]
       ]
     feed_dict = {
       self._train_dict["rewards"]: r,
       self._train_dict["base_line"]: b
       }
-    sum_loss, _ = self._session.run(fetch, feed_dict)
+    sum_loss, _, log_prob_sum_sampled, losses = self._session.run(fetch, feed_dict)
+
+
     
     # self._session.run(self._train_dict["train_op_rl"])
     # tf.logging.info("greedy: {}".format(decoded_greedy[0]))
     # tf.logging.info("ref: {}".format(ref_decoded[0]))
     
     tf.logging.info("sum_loss: {}".format(sum_loss))
+    tf.logging.info("losses: {}".format(losses.shape))
+    tf.logging.info("r: {}".format(r))
+    tf.logging.info("log_prob_sum_sampled: {}".format(log_prob_sum_sampled))
     
     '''
     conv_dec_dict = graph_utils.get_dict_from_collection("conv_dec_dict")

@@ -334,8 +334,10 @@ class Seq2SeqModel(ModelBase):
           labels=labels,
           losses=losses)
 
-      predictions_greedy = self._create_predictions_from_list(decoder_outputs_greedy)
-      predictions_sampled = self._create_predictions_from_list(decoder_outputs_sampled)
+      predictions_greedy = self._create_predictions_from_list(decoder_outputs_greedy["outputs"])
+      predictions_sampled = self._create_predictions_from_list(decoder_outputs_sampled["outputs"])
+      log_prob_sum_sampled = decoder_outputs_sampled["log_prob_sum"]
+
       # We add "useful" tensors to the graph collection so that we
       # can easly find them in our hooks/monitors.
       graph_utils.add_dict_to_collection(predictions, "predictions")
@@ -349,8 +351,10 @@ class Seq2SeqModel(ModelBase):
       base_line = tf.placeholder(tf.float32, [None])
       diff  =  rewards - base_line
 
-      sum_loss = tf.reduce_sum(tf.multiply(losses, diff)) # x * y element-wise, give [T, B]
+      sum_loss = tf.reduce_sum(tf.multiply(tf.negative(losses), diff)) # x * y element-wise, give [T, B] log_prob_sum_sampled
       
+      loss_rl = sum_loss + loss
+
       train_op_rl = None
       if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
         gradient_multipliers = {}
@@ -361,13 +365,14 @@ class Seq2SeqModel(ModelBase):
           tf.logging.info("tensor %s, name is %s", i, i.name)
           gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
         #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
-        train_op_rl = self._build_train_op(sum_loss, gradient_multipliers=gradient_multipliers)
+        train_op_rl = self._build_train_op(loss_rl, gradient_multipliers=gradient_multipliers) # loss_rl
 
       # graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
       graph_utils.add_dict_to_collection({
         "loss": loss, 
         "losses": losses, 
         "sum_loss": sum_loss,
+        "log_prob_sum_sampled": log_prob_sum_sampled,
         "diff": diff,
         "train_op_rl": train_op_rl,
         "rewards": rewards,

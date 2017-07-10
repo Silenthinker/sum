@@ -111,7 +111,9 @@ class ModelBase(Configurable):
         clip_gradients=self._clip_gradients,
         optimizer=optimizer,
         gradient_multipliers=gradient_multipliers,
-        summaries=["learning_rate", "loss", "gradients", "gradient_norm"])
+        # summaries=["learning_rate", "loss", "gradients", "gradient_norm"] # since loss_rl is dependent on reward and base_line, treat it elsewhere
+        summaries=["learning_rate"]
+        )
 
     return train_op
 
