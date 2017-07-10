@@ -347,10 +347,10 @@ class Seq2SeqModel(ModelBase):
       
       rewards = tf.placeholder(tf.float32, [None])
       base_line = tf.placeholder(tf.float32, [None])
-      r  =  rewards - base_line
+      diff  =  rewards - base_line
 
-      sum_loss = tf.reduce_sum(tf.multiply(losses, (rewards - base_line))) # x * y element-wise, give [T, B]
-
+      sum_loss = tf.reduce_sum(tf.multiply(losses, diff)) # x * y element-wise, give [T, B]
+      
       train_op_rl = None
       if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
         gradient_multipliers = {}
@@ -362,16 +362,19 @@ class Seq2SeqModel(ModelBase):
           gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
         #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
         train_op_rl = self._build_train_op(loss, gradient_multipliers=gradient_multipliers)
-      graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
+
+      # graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
+      graph_utils.add_dict_to_collection({
+        "loss": loss, 
+        "losses": losses, 
+        "sum_loss": sum_loss,
+        "diff": diff,
+        "train_op_rl": train_op_rl,
+        "rewards": rewards,
+        "base_line": base_line}, "train")
+    
       train_op = None
       if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
-        gradient_multipliers = {}
-        # multiply the gradient by 1.0/(2*#att_layer)       
-        for i in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='model/conv_seq2seq/encode'):
-          if 'encode/W' in i.name or 'encode/pos' in i.name:
-            continue
-          tf.logging.info("tensor %s, name is %s", i, i.name)
-          gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
-        #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
-        train_op = self._build_train_op(loss, gradient_multipliers=gradient_multipliers)
+        dummy_train_op = tf.constant([0]) # just a dummy train_op; real train_op is performed in hooks
+        train_op = dummy_train_op
     return predictions, loss, train_op

@@ -212,14 +212,17 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     logits = self.infer_conv_block(enc_output, cur_inputs_pos, is_train=False) # [1, V]
     
     ###
+    softmax = tf.nn.softmax(logits, dim=-1, name=None) # [1, self.V]
     if sample:
-      softmax = tf.nn.softmax(logits, dim=-1, name=None) # [1, self.V]
       sample_ids = tf.multinomial(tf.log(tf.clip_by_value(softmax, 1e-20, 1.0)), 1) # [None, 1]
       sample_ids = tf.cast(tf.reshape(sample_ids, [-1]), dtypes.int32) # [None]
     else:
       sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32) # greedy...
     ###
-
+    one_hot = tf.one_hot(sample_ids, softmax.get_shape().as_list()[1], axis=-1) # [B, V]
+    prob = tf.reduce_sum(tf.multiply(one_hot, softmax), axis=1) # [B, 1] # compute prob of sampling the word
+    # tf.logging.info(prob.get_shape())
+    
     finished, next_inputs = self.next_inputs(sample_ids=sample_ids, batch_size=batch_size)
     next_inputs = tf.reshape(next_inputs, [batch_size, 1, inputs.get_shape().as_list()[-1]])
     next_inputs = tf.concat([cur_inputs, next_inputs], axis=1)
@@ -228,7 +231,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     outputs = ConvDecoderOutput(
         logits=logits,
         predicted_ids=sample_ids)
-    return outputs, enc_output, next_inputs, finished
+    return outputs, enc_output, next_inputs, finished, prob
 
 
     

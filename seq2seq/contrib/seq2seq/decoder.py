@@ -241,7 +241,7 @@ def dynamic_decode(decoder,
         `(time + 1, outputs_ta, next_state, next_inputs, next_finished)`.
       """
       (next_outputs, decoder_state, next_inputs,
-       decoder_finished) = decoder.step(time, inputs, state, sample=sample, batch_size=batch_size)
+       decoder_finished, prob) = decoder.step(time, inputs, state, sample=sample, batch_size=batch_size)
       next_finished = math_ops.logical_or(decoder_finished, finished)
       if maximum_iterations is not None:
         next_finished = math_ops.logical_or(
