@@ -158,21 +158,17 @@ class ConvSeq2Seq(Seq2SeqModel):
     return decoder(_encoder_output, labels)
 
   @templatemethod("encode")
-  def encode(self, features, labels):
+  def encode(self, features, labels, embedding_tensor):
     
     features["source_ids"] = tf.reverse_sequence(features["source_ids"], features["source_len"], batch_dim=0, seq_dim=1)  # [[1,2,3,4,PAD,PAD,PAD],[2,3,PAD,PAD,PAD,PAD,PAD]]   [4,2]
     features["source_ids"] = tf.reverse(features["source_ids"],[1])  # --> [[4,3,2,1,PAD,PAD,PAD],[3,2,PAD,PAD,PAD,PAD,PAD]] --> [[PAD,PAD,PAD,1,2,3,4],[PAD,PAD,PAD,PAD,PAD,2,3]]
-
-    ######
-    features["source_topicEmb"] = tf.reverse_sequence(features["source_topicEmb"], features["source_len"], batch_dim=0, seq_dim=1)
-    features["source_topicEmb"] = tf.reverse(features["source_topicEmb"],[1])
      
     source_embedded = tf.nn.embedding_lookup(self.source_embedding_fairseq(),
                                              features["source_ids"])
-    source_topicEmbedded = tf.nn.embedding_lookup(features["vacabTopicEmb_tensor"],features["source_ids"])
+    source_topic_emb = tf.nn.embedding_lookup(embedding_tensor,features["source_ids"])
     
     encoder_fn = self.encoder_class(self.params["encoder.params"], self.mode, self.source_pos_embedding_fairseq())
-    return encoder_fn(source_embedded, features["source_len"], source_topicEmbedded)
+    return encoder_fn(source_embedded, features["source_len"], source_topic_emb)
 
   @templatemethod("decode")
   def decode(self, encoder_output, features, labels):

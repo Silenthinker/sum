@@ -158,7 +158,7 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
       else:
          vacabTopicDict.append( [float(0)]*topicEmbSize ) 
          
-  vacabTopicEmb_tensor = tf.constant(vacabTopicDict,dtype=tf.float32)
+  vacab_topic_emb_tensor = tf.constant(vacabTopicDict,dtype=tf.float32)
 
   tf.logging.info("Creating topic word vocabulary lookup table of size %d", vocabTopic_size)
 
@@ -174,7 +174,7 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
     
   ###topicEmbedding = tf.constant(np.array(topicEmbedding))
 
-  return vocab_to_id_table, id_to_vocab_table, word_to_count_table, vacabTopicEmb_tensor, vocab_size
+  return vocab_to_id_table, id_to_vocab_table, word_to_count_table, vacab_topic_emb_tensor, vocab_size
 
 
 def create_vocabulary_lookup_table(filename, default_value=None):

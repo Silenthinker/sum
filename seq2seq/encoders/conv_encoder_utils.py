@@ -187,8 +187,10 @@ def conv_decoder_stack(target_embed, enc_output, inputs, nhids_list, kwidths_lis
 def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
   with tf.variable_scope("attention_layer_" + str(layer_idx)):
     embed_size = target_embed.get_shape().as_list()[-1]      #k
+    print("target_embed_size:"+str(embed_size))
     dec_hidden_proj = linear_mapping_weightnorm(decoder_hidden, embed_size, var_scope_name="linear_mapping_att_query")  # M*N1*k1 --> M*N1*k
     dec_rep = (dec_hidden_proj + target_embed) * tf.sqrt(0.5)
+    dec_rep = tf.tile(dec_rep,[-1,1,2])
  
     encoder_output_a = encoder_output.outputs
     encoder_output_c = encoder_output.attention_values    # M*N2*K
