@@ -68,6 +68,11 @@ class TrainingHook(tf.train.SessionRunHook, Configurable):
   def default_params():
     raise NotImplementedError()
 
+<<<<<<< HEAD
+=======
+  def after_create_session(self, session, coord):
+    self._session = session
+>>>>>>> lilian/master
 
 class MetadataCaptureHook(TrainingHook):
   """A hook to capture metadata for a single step.
@@ -226,6 +231,35 @@ class TrainSampleHook(TrainingHook):
         file.write(result_str)
     self._timer.update_last_triggered_step(self._iter_count - 1)
 
+    #######
+    conv_dec_dict = graph_utils.get_dict_from_collection("conv_dec_dict")
+    data_source_target = graph_utils.get_dict_from_collection("data_source_target")
+    conv_enc_dict = graph_utils.get_dict_from_collection("conv_enc_dict")
+    utils = graph_utils.get_dict_from_collection("utils")
+    for k,v in conv_dec_dict.items():
+      res = self._session.run(v)
+      if k == "enc_output":
+        for n,m in v._asdict().items():
+          tf.logging.info("{}:{}".format(n,m.shape))
+      else:
+        tf.logging.info("{}:{}".format(k,res.shape))
+        
+    for k,v in conv_enc_dict.items():
+      res = self._session.run(v)
+      tf.logging.info("{}:{}_{}_{}".format(k,len(res),len(res[0]),len(res[0][1])))
+      
+    for k,v in utils.items():
+      res = self._session.run(v)
+      ###if k == "features_and_labels pipeline":
+      for n,m in v.items():
+        tf.logging.info("{}:{}:{}".format(k,n,m))
+      ###else:
+         ### for n,m in v._asdict().items():
+           ### tf.logging.info("{}:{}".format(n,m))
+    
+    ###for k,v in data_source_target.items():
+      ###res = self._session.run(v)
+      ###tf.logging.info("{}:{}".format(k,res.shape))
 
 class PrintModelAnalysisHook(TrainingHook):
   """Writes the parameters of the model to a file and stdout.

@@ -20,6 +20,7 @@ set -e
 BASE_DIR="$(pwd)"
 
 OUTPUT_DIR="${BASE_DIR}/output"
+
 echo "Writing to ${OUTPUT_DIR}. To change this, set the OUTPUT_DIR environment variable."
 
 OUTPUT_DIR_DATA="${OUTPUT_DIR}/data"

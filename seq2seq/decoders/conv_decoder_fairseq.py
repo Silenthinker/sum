@@ -30,6 +30,7 @@ from tensorflow.python.util import nest  # pylint: disable=E0611
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import math_ops
 
+from seq2seq import graph_utils
 from seq2seq.graph_module import GraphModule
 from seq2seq.configurable import Configurable
 from seq2seq.contrib.seq2seq.decoder import Decoder, dynamic_decode
@@ -235,8 +236,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     with tf.variable_scope("decoder_cnn"):    
       next_layer = input_embed
       if self.params["cnn.layers"] > 0:
-        nhids_list = parse_list_or_default(self.params["cnn.nhids"], self.params["cnn.layers"], self.params["cnn.nhid_default"])
-        kwidths_list = parse_list_or_default(self.params["cnn.kwidths"], self.params["cnn.layers"], self.params["cnn.kwidth_default"])
+        nhids_list = parse_list_or_default(self.params["cnn.nhids"], self.params["cnn.layers"], self.params["cnn.nhid_default"])    ###[256,256,256]
+        kwidths_list = parse_list_or_default(self.params["cnn.kwidths"], self.params["cnn.layers"], self.params["cnn.kwidth_default"])    ###[3,3,3]
         
         # mapping emb dim to hid dim
         next_layer = linear_mapping_weightnorm(next_layer, nhids_list[0], dropout=self.params["embedding_dropout_keep_prob"], var_scope_name="linear_mapping_before_cnn")      
@@ -284,22 +285,25 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     embed_size = labels.get_shape().as_list()[-1]
     if self.params["position_embeddings.enable"]:
       positions_embed = self._create_position_embedding(
-          lengths=sequence_length,
+          lengths=sequence_length,   ###sequence_length  128
           maxlen=tf.shape(labels)[1])
-      labels = self._combiner_fn(labels, positions_embed)
+      labels = self._combiner_fn(labels, positions_embed)   ###labels (128, 15, 256)   # [B, T, embed_size]
      
     # Apply dropout to embeddings
-    inputs = tf.contrib.layers.dropout(
+    inputs = tf.contrib.layers.dropout(      ###inputs shape (128,15,256)  # [B, T, embed_size]
         inputs=labels,
         keep_prob=self.params["embedding_dropout_keep_prob"],
         is_training=self.mode == tf.contrib.learn.ModeKeys.TRAIN)
     
-    next_layer = self.conv_block(enc_output, inputs, True)
+    next_layer = self.conv_block(enc_output, inputs, True)   ###(128, 16, 31114)  # [B, T, V]
       
        
-    logits = _transpose_batch_time(next_layer)   
+    logits = _transpose_batch_time(next_layer)    ###logits:(13, 128, 31114)   # [T, B, V]
 
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32)
+    
+    conv_dec_dict = {"enc_output":enc_output, "labels:":labels,"sequence_length":sequence_length,"decoder inputs":inputs,"next_layer":next_layer,"logits":logits}
+    graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
     return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
 
@@ -316,3 +320,10 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         outputs = self.conv_decoder_train(enc_output=enc_output, labels=labels, sequence_length=sequence_length)
         states = None
         return outputs, states
+
+"""
+INFO:tensorflow:outputs:(?, ?, 256)
+INFO:tensorflow:final_state:(128, 256)
+INFO:tensorflow:attention_values:(128, ?, 256)
+INFO:tensorflow:attention_values_length:(128,)
+"""

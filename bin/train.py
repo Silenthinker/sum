@@ -219,6 +219,8 @@ def create_experiment(output_dir):
 def main(_argv):
   """The entrypoint for the script"""
 
+  os.environ["CUDA_VISIBLE_DEVICES"]= "2,4,5,7"
+
   # Parse YAML FLAGS
   FLAGS.hooks = _maybe_load_yaml(FLAGS.hooks)
   FLAGS.metrics = _maybe_load_yaml(FLAGS.metrics)
@@ -237,6 +239,7 @@ def main(_argv):
       tf.logging.info("Loading config from %s", config_path)
       with gfile.GFile(config_path.strip()) as config_file:
         config_flags = yaml.load(config_file)
+
         final_config = _deep_merge_dict(final_config, config_flags)  ###merge the flags and values from all the files into a dict
 
   tf.logging.info("Final Config:\n%s", yaml.dump(final_config))   ###print the flags and values read from all the files
@@ -258,6 +261,7 @@ def main(_argv):
                     FLAGS.save_checkpoints_secs)
 
   if not FLAGS.output_dir:
+
     FLAGS.output_dir = tempfile.mkdtemp()  ###creat temporary files
 
   if not FLAGS.input_pipeline_train:

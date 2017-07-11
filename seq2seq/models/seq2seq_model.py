@@ -272,6 +272,102 @@ class Seq2SeqModel(ModelBase):
 
     return features, labels
 
+  def _preprocess_add_topics(self, features, labels):
+    """Model-specific preprocessing for features and labels:
+
+    - Creates vocabulary lookup tables for source and target vocab
+    - Converts tokens into vocabulary ids
+    """
+
+    # Create vocabulary lookup for source
+    ###source_vocab_to_id, source_id_to_vocab, source_word_to_count, _ = \
+      ###vocab.create_vocabulary_lookup_table(self.source_vocab_info.path)
+    source_vocab_to_id, source_id_to_vocab, source_word_to_count, vacabTopicDict, _ = \
+      vocab.create_vocabulary_lookup_table_add_topics(self.source_vocab_info.path)
+
+    # Create vocabulary look for target
+    target_vocab_to_id, target_id_to_vocab, target_word_to_count, _ = \
+      vocab.create_vocabulary_lookup_table_add_topics(self.target_vocab_info.path)
+
+    # Add vocab tables to graph colection so that we can access them in
+    # other places.
+    graph_utils.add_dict_to_collection({
+        "source_vocab_to_id": source_vocab_to_id,
+        "source_id_to_vocab": source_id_to_vocab,
+        "source_word_to_count": source_word_to_count,
+        "target_vocab_to_id": target_vocab_to_id,
+        "target_id_to_vocab": target_id_to_vocab,
+        "target_word_to_count": target_word_to_count
+        ###"source_to_topicEmbedding_table": source_to_topicEmbedding_table
+    }, "vocab_tables")
+
+    # Slice source to max_len
+    if self.params["source.max_seq_len"] is not None:
+      features["source_tokens"] = features["source_tokens"][:, :self.params[
+          "source.max_seq_len"]]
+      features["source_len"] = tf.minimum(features["source_len"],
+                                          self.params["source.max_seq_len"])
+
+    # Look up the source ids in the vocabulary
+    features["source_ids"] = source_vocab_to_id.lookup(features[
+        "source_tokens"])
+    ###features["source_topicEmb"] = source_to_topicEmbedding_table.lookup(features[
+       ### "source_tokens"]) ###
+    features["source_topicEmb"] = 
+
+    # Maybe reverse the source
+    if self.params["source.reverse"] is True:
+      features["source_ids"] = tf.reverse_sequence(
+          input=features["source_ids"],
+          seq_lengths=features["source_len"],
+          seq_dim=1,
+          batch_dim=0,
+          name=None)
+      features["source_topicEmb"] = tf.reverse_sequence(
+          input=features["source_topicEmb"],
+          seq_lengths=features["source_len"],
+          seq_dim=1,
+          batch_dim=0,
+          name=None)
+
+    features["source_len"] = tf.to_int32(features["source_len"])
+    tf.summary.histogram("source_len", tf.to_float(features["source_len"]))
+
+    if labels is None:
+      return features, None
+
+    labels = labels.copy()
+
+    # Slices targets to max length
+    if self.params["target.max_seq_len"] is not None:
+      labels["target_tokens"] = labels["target_tokens"][:, :self.params[
+          "target.max_seq_len"]]
+      labels["target_len"] = tf.minimum(labels["target_len"],
+                                        self.params["target.max_seq_len"])
+
+    # Look up the target ids in the vocabulary
+    labels["target_ids"] = target_vocab_to_id.lookup(labels["target_tokens"])
+
+    labels["target_len"] = tf.to_int32(labels["target_len"])
+    tf.summary.histogram("target_len", tf.to_float(labels["target_len"]))
+
+    # Keep track of the number of processed tokens
+    num_tokens = tf.reduce_sum(labels["target_len"])
+    num_tokens += tf.reduce_sum(features["source_len"])
+    token_counter_var = tf.Variable(0, "tokens_counter")
+    total_tokens = tf.assign_add(token_counter_var, num_tokens)
+    tf.summary.scalar("num_tokens", total_tokens)
+
+    with tf.control_dependencies([total_tokens]):   ###?
+      features["source_tokens"] = tf.identity(features["source_tokens"])
+
+    # Add to graph collection for later use
+    graph_utils.add_dict_to_collection(features, "features")
+    if labels:
+      graph_utils.add_dict_to_collection(labels, "labels")
+
+    return features, labels
+
   def compute_loss(self, decoder_output, _features, labels):
     """Computes the loss for this model.
 
@@ -294,7 +390,8 @@ class Seq2SeqModel(ModelBase):
 
   def _build(self, features, labels, params):
     # Pre-process features and labels
-    features, labels = self._preprocess(features, labels)
+    ###features, labels = self._preprocess(features, labels)
+    features, labels = self._preprocess_add_topics(features, labels)###
 
     encoder_output = self.encode(features, labels)
     decoder_output, _, = self.decode(encoder_output, features, labels)

@@ -21,6 +21,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+
+from seq2seq import graph_utils
 import inspect
 import os
 from collections import defaultdict
@@ -287,6 +289,9 @@ def create_input_fn(pipeline,
         labels_batch = {k: batch[k] for k in pipeline.label_keys}
       else:
         labels_batch = None
+        
+      utils = {"features_and_labels pipeline":features_and_labels,"batch":batch,"features_batch":features_batch,"labels_batch":labels_batch}
+      graph_utils.add_dict_to_collection(utils,"utils") 
 
       return features_batch, labels_batch
 
