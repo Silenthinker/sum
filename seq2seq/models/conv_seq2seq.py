@@ -169,7 +169,7 @@ class ConvSeq2Seq(Seq2SeqModel):
      
     source_embedded = tf.nn.embedding_lookup(self.source_embedding_fairseq(),
                                              features["source_ids"])
-    source_topicEmbedded = features["source_topicEmb"]
+    source_topicEmbedded = tf.nn.embedding_lookup(features["vacabTopicEmb_tensor"],features["source_ids"])
     
     encoder_fn = self.encoder_class(self.params["encoder.params"], self.mode, self.source_pos_embedding_fairseq())
     return encoder_fn(source_embedded, features["source_len"], source_topicEmbedded)

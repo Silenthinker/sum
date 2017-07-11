@@ -68,11 +68,8 @@ class TrainingHook(tf.train.SessionRunHook, Configurable):
   def default_params():
     raise NotImplementedError()
 
-<<<<<<< HEAD
-=======
   def after_create_session(self, session, coord):
     self._session = session
->>>>>>> lilian/master
 
 class MetadataCaptureHook(TrainingHook):
   """A hook to capture metadata for a single step.

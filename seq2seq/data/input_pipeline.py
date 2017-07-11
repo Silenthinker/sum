@@ -31,11 +31,8 @@ import six
 import tensorflow as tf
 from tensorflow.contrib.slim.python.slim.data import tfexample_decoder
 
-<<<<<<< HEAD
-=======
 from seq2seq import graph_utils
 
->>>>>>> lilian/master
 from seq2seq.configurable import Configurable
 from seq2seq.data import split_tokens_decoder, parallel_data_provider
 from seq2seq.data.sequence_example_decoder import TFSEquenceExampleDecoder
@@ -60,11 +57,7 @@ def make_input_pipeline_from_def(def_dict, mode, **kwargs):
   if not hasattr(sys.modules[__name__], class_):
     raise ValueError("Invalid Input Pipeline class: {}".format(class_))
 
-<<<<<<< HEAD
   pipeline_class = getattr(sys.modules[__name__], class_)  ##getattr(x, 'y') is equivalent to x.y    that is object.name
-=======
-  pipeline_class = getattr(sys.modules[__name__], class_)
->>>>>>> lilian/master
 
   # Constructor arguments
   params = {}

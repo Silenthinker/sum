@@ -282,7 +282,7 @@ class Seq2SeqModel(ModelBase):
     # Create vocabulary lookup for source
     ###source_vocab_to_id, source_id_to_vocab, source_word_to_count, _ = \
       ###vocab.create_vocabulary_lookup_table(self.source_vocab_info.path)
-    source_vocab_to_id, source_id_to_vocab, source_word_to_count, vacabTopicDict, _ = \
+    source_vocab_to_id, source_id_to_vocab, source_word_to_count, vacabTopicEmb_tensor, _ = \
       vocab.create_vocabulary_lookup_table_add_topics(self.source_vocab_info.path)
 
     # Create vocabulary look for target
@@ -311,9 +311,7 @@ class Seq2SeqModel(ModelBase):
     # Look up the source ids in the vocabulary
     features["source_ids"] = source_vocab_to_id.lookup(features[
         "source_tokens"])
-    ###features["source_topicEmb"] = source_to_topicEmbedding_table.lookup(features[
-       ### "source_tokens"]) ###
-    features["source_topicEmb"] = 
+    features["vacabTopicEmb_tensor"] = vacabTopicEmb_tensor
 
     # Maybe reverse the source
     if self.params["source.reverse"] is True:

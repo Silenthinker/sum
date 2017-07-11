@@ -103,7 +103,9 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
 
   vocab_tensor = tf.constant(vocab)
   count_tensor = tf.constant(counts, dtype=tf.float32)
-  vocab_idx_tensor = tf.range(vocab_size, dtype=tf.int64)
+  ###vocab_idx_tensor = tf.range(vocab_size, dtype=tf.int64)
+  idx = list(range(vocab_size)) ###vocab_index
+  vocab_idx_tensor = tf.constant(idx,dtype=tf.int64)
 
   # Create ID -> word mapping
   id_to_vocab_init = tf.contrib.lookup.KeyValueTensorInitializer(
@@ -123,12 +125,12 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
   
   
   ### Load topic into memory
-  with gfile.GFile("/nlp/lilianwang/conv_seq2seq-master3/train.tok.clean.bpe.32000.art.w2v.txt") as file:
+  with gfile.GFile("/nlp/lilianwang/conv_seq2seq_master/topic_giga") as file:
     vocabTopic = list(line.strip("\n") for line in file)
   vocabTopic_size = len(vocabTopic)
     
-  #######vocabTopic, topicEmbedding = zip(*[_.split("\t") for _ in vocabTopic])
-  vocabTopic, topicEmbedding = zip(*[ [_.split(" ")[0], ' '.join(_.split(" ")[1:257])] for _ in vocabTopic])
+  vocabTopic, topicEmbedding = zip(*[_.split("\t") for _ in vocabTopic])
+  ######vocabTopic, topicEmbedding = zip(*[ [_.split(" ")[0], ' '.join(_.split(" ")[1:257])] for _ in vocabTopic])
   topicEmbedding = [list( float(_) for _ in _.split(" ") ) for _ in topicEmbedding]
   topicEmbSize = len(topicEmbedding[0])
   print("topicEmbSize:"+str(topicEmbSize))
@@ -149,9 +151,14 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
           vacabTopicDict[word] = [0]*256
   """
 
-  vacabTopicDict = {}
-  for i in xrange(0,vocabTopic_size):
-     vacabTopicDict[vocabTopic[i]] = topicEmbedding[i]
+  vacabTopicDict = []
+  for vocab_idx in idx:
+      if vocab[vocab_idx] in vocabTopic:
+         vacabTopicDict.append(topicEmbedding[vocabTopic.index(vocab[vocab_idx])])
+      else:
+         vacabTopicDict.append( [float(0)]*topicEmbSize ) 
+         
+  vacabTopicEmb_tensor = tf.constant(vacabTopicDict,dtype=tf.float32)
 
   tf.logging.info("Creating topic word vocabulary lookup table of size %d", vocabTopic_size)
 
@@ -167,7 +174,7 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
     
   ###topicEmbedding = tf.constant(np.array(topicEmbedding))
 
-  return vocab_to_id_table, id_to_vocab_table, word_to_count_table, vacabTopicDict, vocab_size
+  return vocab_to_id_table, id_to_vocab_table, word_to_count_table, vacabTopicEmb_tensor, vocab_size
 
 
 def create_vocabulary_lookup_table(filename, default_value=None):

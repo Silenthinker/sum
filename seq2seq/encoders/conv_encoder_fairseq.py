@@ -22,11 +22,8 @@ from __future__ import print_function
 
 from pydoc import locate
 
-<<<<<<< HEAD
-=======
 from seq2seq import graph_utils
 
->>>>>>> lilian/master
 import tensorflow as tf
 
 from seq2seq.encoders.encoder import Encoder, EncoderOutput
@@ -94,31 +91,19 @@ class ConvEncoderFairseq(Encoder):
     return positions_embed
    
 
-
-<<<<<<< HEAD
-  def encode(self, inputs, sequence_length):
-    
-    embed_size = inputs.get_shape().as_list()[-1]
-=======
   def encode(self, inputs, sequence_length, source_topicEmbedded): ######
     
     embed_size = inputs.get_shape().as_list()[-1]
     topic_embed_size = source_topicEmbedded.get_shape().as_list()[-1]#####
->>>>>>> lilian/master
     
     if self.params["position_embeddings.enable"]:
       positions_embed = self._create_position_embedding(
           lengths=sequence_length,  # tensor, data lengths
           maxlen=tf.shape(inputs)[1])  # max len in this batch
-<<<<<<< HEAD
-      inputs = self._combiner_fn(inputs, positions_embed)
-    
-=======
       inputs = self._combiner_fn(inputs, positions_embed)    ###(128,39,256)
       
     conv_enc_dict = {"encoder inputs":inputs,"source_topicEmbedded":source_topicEmbedded}
     graph_utils.add_dict_to_collection(conv_enc_dict,"conv_enc_dict")  
->>>>>>> lilian/master
     
     # Apply dropout to embeddings
     inputs = tf.contrib.layers.dropout(
@@ -143,13 +128,6 @@ class ConvEncoderFairseq(Encoder):
             
 
     final_state = tf.reduce_mean(cnn_c_output, 1)
-<<<<<<< HEAD
-
-    return EncoderOutput(
-        outputs=next_layer,
-        final_state=final_state,
-        attention_values=cnn_c_output,
-=======
     
     #####for topic embedding
     # Apply dropout to embeddings
@@ -180,5 +158,4 @@ class ConvEncoderFairseq(Encoder):
         outputs=tf.concat([next_layer,next_layer_topic],0),
         final_state=tf.concat([final_state,final_state_topic],0),
         attention_values=tf.concat([cnn_c_output,cnn_c_output_topic],0),
->>>>>>> lilian/master
         attention_values_length=sequence_length)

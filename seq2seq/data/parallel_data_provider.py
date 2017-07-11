@@ -26,10 +26,8 @@ from tensorflow.contrib.slim.python.slim.data import data_provider
 from tensorflow.contrib.slim.python.slim.data import parallel_reader
 
 from seq2seq.data import split_tokens_decoder
-<<<<<<< HEAD
-=======
+
 from seq2seq import graph_utils
->>>>>>> lilian/master
 
 
 def make_parallel_data_provider(data_sources_source,
@@ -119,12 +117,8 @@ class ParallelDataProvider(data_provider.DataProvider):
       seed = np.random.randint(10e8)
 
     _, data_source = parallel_reader.parallel_read(
-<<<<<<< HEAD
-        dataset1.data_sources,
-=======
         dataset1.data_sources,   ###dataset1 is a tf.contrib.slim.dataset.Dataset class
         ### dataset1.data_sources  :file path, maybe list
->>>>>>> lilian/master
         reader_class=dataset1.reader,
         num_epochs=num_epochs,
         num_readers=1,
@@ -132,11 +126,8 @@ class ParallelDataProvider(data_provider.DataProvider):
         capacity=common_queue_capacity,
         min_after_dequeue=common_queue_min,
         seed=seed)
-<<<<<<< HEAD
-=======
     ###Returns:
     ###key, value: a tuple of keys and values from the data_source.    
->>>>>>> lilian/master
 
     data_target = ""
     if dataset2 is not None:
@@ -150,12 +141,9 @@ class ParallelDataProvider(data_provider.DataProvider):
           min_after_dequeue=common_queue_min,
           seed=seed)
 
-<<<<<<< HEAD
-=======
     data_source_target = {"data_source":data_source,"data_target":data_target}
     graph_utils.add_dict_to_collection(data_source_target,"data_source_target")
 
->>>>>>> lilian/master
     # Optionally shuffle the data
     if shuffle:
       shuffle_queue = tf.RandomShuffleQueue(
