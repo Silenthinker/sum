@@ -3,7 +3,7 @@ default_params: &default_params
   - postproc_fn: "seq2seq.data.postproc.strip_bpe"
 
 metrics:
-  # - class: LogPerplexityMetricSpec
-  - class: BleuMetricSpec
-    params:
-      <<: *default_params
+  - class: LogPerplexityMetricSpec
+  # - class: BleuMetricSpec
+  #   params:
+  #     <<: *default_params

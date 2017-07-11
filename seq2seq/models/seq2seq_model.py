@@ -305,19 +305,17 @@ class Seq2SeqModel(ModelBase):
     return losses, loss
 
   def _build(self, features, labels, params):
+    if self.mode != tf.contrib.learn.ModeKeys.INFER:
+      is_rl = params["rl"]
     # Pre-process features and labels
     features, labels = self._preprocess(features, labels)
-
+    # Obtain encoder output
     encoder_output = self.encode(features, labels)
-    # decoder_output, _, = self.decode(encoder_output, features, labels, sample=False)
+    
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
-      decoder_outputs, _ = self.decode(encoder_output, features, labels)  
+      decoder_outputs, _ = self.decode(encoder_output, features, labels) 
     else:
-      decoder_outputs, decoder_outputs_greedy, decoder_outputs_sampled = self.decode(encoder_output, features, labels)
-    
-    
-    
-    decoder = self.decoder
+      decoder_outputs = self.decode(encoder_output, features, labels, is_rl) # tuple of len 3
 
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
       loss = None
@@ -327,59 +325,74 @@ class Seq2SeqModel(ModelBase):
           decoder_output=decoder_outputs, features=features, labels=labels)
       graph_utils.add_dict_to_collection(predictions, "predictions")
     else:
-      losses = None
-      predictions = self._create_predictions(
-          decoder_output=decoder_outputs,
-          features=features,
-          labels=labels,
-          losses=losses)
+      if is_rl:
+        _names = ["train", "greedy", "sampled"]
+        decoder_outputs_dict = dict(zip(_names, decoder_outputs)) # dict
+        log_prob_sum_sampled = decoder_outputs_dict["sampled"]["log_prob_sum"]      
+        losses, loss = self.compute_loss(decoder_outputs_dict["train"]["outputs"], features, labels)
 
-      predictions_greedy = self._create_predictions_from_list(decoder_outputs_greedy["outputs"])
-      predictions_sampled = self._create_predictions_from_list(decoder_outputs_sampled["outputs"])
-      log_prob_sum_sampled = decoder_outputs_sampled["log_prob_sum"]
+        predictions_dict = {k:self._create_predictions(decoder_output=v["outputs"],
+                        features=features,
+                        labels=labels,
+                        losses=losses) for k, v in decoder_outputs_dict.items()}
+        predictions = predictions_dict["train"]
+        
+        # We add "useful" tensors to the graph collection so that we
+        # can easly find them in our hooks/monitors.
+        [graph_utils.add_dict_to_collection(v, "predictions_"+k) for k, v in  predictions_dict.items()]
 
-      # We add "useful" tensors to the graph collection so that we
-      # can easly find them in our hooks/monitors.
-      graph_utils.add_dict_to_collection(predictions, "predictions")
-      graph_utils.add_dict_to_collection(predictions_greedy, "predictions_greedy")
-      graph_utils.add_dict_to_collection(predictions_sampled, "predictions_sampled")
+        
+        
+        rewards = tf.placeholder(tf.float32, [None])
+        base_line = tf.placeholder(tf.float32, [None])
+        norms = tf.placeholder(tf.float32, [None])
 
-      losses, loss = self.compute_loss(decoder_outputs, features, labels)
-      
-      
-      rewards = tf.placeholder(tf.float32, [None])
-      base_line = tf.placeholder(tf.float32, [None])
-      diff  =  rewards - base_line
+        norm = tf.reduce_sum(norms)
+        diff  =  rewards - base_line
 
-      sum_loss = tf.reduce_sum(tf.multiply(tf.negative(losses), diff)) # x * y element-wise, give [T, B] log_prob_sum_sampled
-      
-      loss_rl = sum_loss + loss
+        sum_loss = tf.reduce_sum(
+          tf.multiply(
+            tf.negative(log_prob_sum_sampled), diff)
+          ) / norm # x * y element-wise, give [T, B] log_prob_sum_sampled
+        lbd = 0.9
+        loss_rl = lbd * sum_loss + (1 - lbd) * loss
+      else:
+        losses, loss = self.compute_loss(decoder_outputs["outputs"], features, labels)
 
-      train_op_rl = None
-      if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
-        gradient_multipliers = {}
-        # multiply the gradient by 1.0/(2*#att_layer)       
-        for i in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='model/conv_seq2seq/encode'):
-          if 'encode/W' in i.name or 'encode/pos' in i.name:
-            continue
-          tf.logging.info("tensor %s, name is %s", i, i.name)
-          gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
-        #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
+      gradient_multipliers = {}
+      # multiply the gradient by 1.0/(2*#att_layer)       
+      for i in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='model/conv_seq2seq/encode'):
+        if 'encode/W' in i.name or 'encode/pos' in i.name:
+          continue
+        tf.logging.info("tensor %s, name is %s", i, i.name)
+        gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
+      #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
+      if is_rl:
         train_op_rl = self._build_train_op(loss_rl, gradient_multipliers=gradient_multipliers) # loss_rl
 
-      # graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
-      graph_utils.add_dict_to_collection({
-        "loss": loss, 
-        "losses": losses, 
-        "sum_loss": sum_loss,
-        "log_prob_sum_sampled": log_prob_sum_sampled,
-        "diff": diff,
-        "train_op_rl": train_op_rl,
-        "rewards": rewards,
-        "base_line": base_line}, "train")
-    
-      train_op = None
-      if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
+        # graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
+        graph_utils.add_dict_to_collection({
+          "loss": loss, 
+          "losses": losses, 
+          "norms": norms,
+          "sum_loss": sum_loss,
+          "loss_rl": loss_rl,
+          "log_prob_sum_sampled": log_prob_sum_sampled,
+          "diff": diff,
+          "train_op_rl": train_op_rl,
+          "rewards": rewards,
+          "base_line": base_line}, "train")
         dummy_train_op = tf.constant([0]) # just a dummy train_op; real train_op is performed in hooks
         train_op = dummy_train_op
+      else:
+        train_op = self._build_train_op(loss, gradient_multipliers=gradient_multipliers) 
+        predictions = self._create_predictions(decoder_outputs["outputs"],
+                        features=features,
+                        labels=labels,
+                        losses=losses)
+        graph_utils.add_dict_to_collection(predictions, "predictions_train")
+        graph_utils.add_dict_to_collection({
+          "loss": loss, 
+          "losses": losses, 
+          "train_op": train_op}, "train")
     return predictions, loss, train_op

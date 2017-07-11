@@ -198,7 +198,7 @@ def dynamic_decode(decoder,
     initial_log_prob_sum = zeros([batch_size])
     zero_outputs = _create_zero_outputs(decoder.output_size,
                                         decoder.output_dtype,
-                                        decoder.batch_size)
+                                        batch_size)
 
     if maximum_iterations is not None:
       initial_finished = math_ops.logical_or(
@@ -219,7 +219,7 @@ def dynamic_decode(decoder,
           dtype=d,
           size=0,
           dynamic_size=True,
-          element_shape=_shape(decoder.batch_size, s))
+          element_shape=_shape(batch_size, s))
 
     initial_outputs_ta = nest.map_structure(_create_ta, decoder.output_size,
                                             decoder.output_dtype)

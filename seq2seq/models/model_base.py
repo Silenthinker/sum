@@ -134,6 +134,7 @@ class ModelBase(Configurable):
         "optimizer.clip_gradients": 5.0,
         "optimizer.sync_replicas": 0,
         "optimizer.sync_replicas_to_aggregate": 0,
+        "rl": True
     }
 
   def batch_size(self, features, labels):

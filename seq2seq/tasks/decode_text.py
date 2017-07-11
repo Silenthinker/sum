@@ -155,15 +155,6 @@ class DecodeText(InferenceTask):
 
   def after_run(self, _run_context, run_values):
     fetches_batch = run_values.results
-    conv_dec_dict = graph_utils.get_dict_from_collection("conv_dec_dict")
-    tf.logging.info("batch_size: {}".format(list(fetches_batch.values())[0].shape[0]))
-    for k, v in conv_dec_dict.items():
-      res = self._session.run(v)
-      if k == "enc_output":
-        for n, m in v._asdict().items():
-          tf.logging.info("{}: {}".format(n, m.shape))
-      else:
-        tf.logging.info("{}: {}".format(k, res.shape))
 
     for fetches in unbatch_dict(fetches_batch):
       # Convert to unicode
