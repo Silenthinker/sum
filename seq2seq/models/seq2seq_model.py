@@ -354,7 +354,7 @@ class Seq2SeqModel(ModelBase):
           tf.multiply(
             tf.negative(log_prob_sum_sampled), diff)
           ) / norm # x * y element-wise, give [T, B] log_prob_sum_sampled
-        lbd = 0.98
+        lbd = 0.999
         loss_rl = lbd * sum_loss + (1 - lbd) * loss
       else:
         losses, loss = self.compute_loss(decoder_outputs["outputs"], features, labels)

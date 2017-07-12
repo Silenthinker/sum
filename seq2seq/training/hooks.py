@@ -507,4 +507,4 @@ class TrainUpdateLoss(TrainingHook):
       _, loss, sum_loss, loss_rl = self._session.run(fetch, feed_dict)
 
       tf.logging.info("sum_loss: {}, loss: {}, loss_rl: {}".format(sum_loss, loss, loss_rl))
-    
+      
