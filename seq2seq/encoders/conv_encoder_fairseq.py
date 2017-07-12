@@ -155,7 +155,7 @@ class ConvEncoderFairseq(Encoder):
     final_state_topic = tf.reduce_mean(cnn_c_output_topic, 1)
 
     return EncoderOutput( ######
-        outputs=tf.concat([next_layer,next_layer_topic],0),
-        final_state=tf.concat([final_state,final_state_topic],0),
-        attention_values=tf.concat([cnn_c_output,cnn_c_output_topic],0),
+        outputs=tf.concat([next_layer,next_layer_topic],2),
+        final_state=tf.concat([final_state,final_state_topic],2),
+        attention_values=tf.concat([cnn_c_output,cnn_c_output_topic],2),
         attention_values_length=sequence_length)
