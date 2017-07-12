@@ -1,6 +1,6 @@
 model: ConvSeq2Seq
 model_params:
-  rl: False
+  rl: True
   embedding.dim: 256
   encoder.class: seq2seq.encoders.ConvEncoderFairseq
   encoder.params:
@@ -12,7 +12,7 @@ model_params:
     cnn.layers: 3
     cnn.nhids: 256,256,256
     cnn.kwidths: 3,3,3
-    max_decode_length: 16
+    max_decode_length: 32
   optimizer.name: Momentum
   optimizer.params:
     momentum: 0.99
