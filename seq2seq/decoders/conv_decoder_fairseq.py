@@ -215,14 +215,18 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     
     enc_output = state 
     logits = self.infer_conv_block(enc_output, cur_inputs_pos, is_train=False) # [B, V]
+    
+    
+    softmax = tf.nn.softmax(logits, dim=-1, name=None) # [B, self.V]
+    log_softmax = tf.log(tf.clip_by_value(softmax, 1e-20, 1.0))
     if sample:
       sample_ids = tf.multinomial(logits, 1) # [None, 1]
       sample_ids = tf.cast(tf.reshape(sample_ids, [-1]), dtypes.int32) # [B]
     else:
       sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32) # greedy... [B]
     
-    one_hot = tf.one_hot(sample_ids, logits.get_shape().as_list()[1], axis=-1) # [B, V]
-    log_prob = tf.reduce_sum(tf.multiply(one_hot, logits), axis=1) # [B, 1] # compute log prob of sampling the word
+    one_hot = tf.one_hot(sample_ids, log_softmax.get_shape().as_list()[1], axis=-1) # [B, V]
+    log_prob = tf.reduce_sum(tf.multiply(one_hot, log_softmax), axis=1) # [B, 1] # compute log prob of sampling the word
     log_prob.set_shape([batch_size])
     
     finished, next_inputs = self.next_inputs(sample_ids=sample_ids, batch_size=batch_size)
@@ -333,7 +337,6 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       with tf.variable_scope("decoder"):
         initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
         logits = self.infer_conv_block(initial_state, initial_inputs, is_train=False)
-        graph_utils.add_dict_to_collection({"logits": logits}, "logits")
         
       outputs, final_state, log_prob_sum = dynamic_decode(
           decoder=self,

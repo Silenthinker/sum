@@ -38,7 +38,8 @@ from seq2seq.configurable import Configurable, abstractstaticmethod
 from seq2seq import graph_utils, global_vars
 from seq2seq.data import utils
 
-from seq2seq.metrics import score
+# from seq2seq.metrics import score
+from seq2seq.metrics.pythonrouge import rouge_scorer
 
 FLAGS = tf.flags.FLAGS
 
@@ -246,20 +247,23 @@ class TrainSampleHook(TrainingHook):
         predicted_str_sampled = self._target_delimiter.encode("utf-8").join(
             predicted_slice_sampled).decode("utf-8")
 
-      result_str += predicted_str + "\n"
+      result_str += "PREDICTED: " + predicted_str + "\n"
 
       if self._is_rl:
-        result_str += predicted_str_greedy + "\n"
-        result_str += predicted_str_sampled + "\n"
+        result_str += "GREEDY: " + predicted_str_greedy + "\n"
+        result_str += "SAMPLED: " + predicted_str_sampled + "\n"
       
       target_str = self._target_delimiter.encode("utf-8").join(
           target_slice).decode("utf-8")
       result_str += target_str + "\n"
       if self._is_rl:
-        result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str_greedy]))
-        result_str += "BLEU of pred_sampled: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str_sampled]))
+        # result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str_greedy]))
+        # result_str += "BLEU of pred_sampled: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str_sampled]))
+        result_str += "ROUGE of pred_greedy: {}\n".format(rouge_scorer.evaluate([[[target_str]]], [[predicted_str_greedy]]))
+        result_str += "ROUGE of pred_sampled: {}\n\n".format(rouge_scorer.evaluate([[[target_str]]], [[predicted_str_sampled]]))
       else:
-        result_str += "BLEU of pred_greedy: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str]))
+        # result_str += "BLEU of pred_greedy: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str]))
+        result_str += "ROUGE of pred_greedy: {}\n\n".format(rouge_scorer.evaluate_captions([[[target_str]]], [[predicted_str]]))
     result_str += ("=" * 100) + "\n\n"
     tf.logging.info(result_str)
     if self._sample_dir:
@@ -449,6 +453,7 @@ class TrainUpdateLoss(TrainingHook):
     self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
     self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
     self._train_dict = graph_utils.get_dict_from_collection("train")
+
     if "train_op_rl" in self._train_dict.keys():
       self._is_rl = True
     else:
@@ -497,14 +502,17 @@ class TrainUpdateLoss(TrainingHook):
         self._train_dict["train_op_rl"],
         self._train_dict["loss"],
         self._train_dict["sum_loss"],
-        self._train_dict["loss_rl"]
+        self._train_dict["loss_rl"],
+        self._train_dict["log_prob_sum_sampled"],
         ]
       feed_dict = {
         self._train_dict["rewards"]: r,
         self._train_dict["base_line"]: b,
         self._train_dict["norms"]: norms
         }
-      _, loss, sum_loss, loss_rl = self._session.run(fetch, feed_dict)
-
-      tf.logging.info("sum_loss: {}, loss: {}, loss_rl: {}".format(sum_loss, loss, loss_rl))
+      _, loss, sum_loss, loss_rl, log_prob_sum_sampled = self._session.run(fetch, feed_dict)
+      r_mean = sum(r)*1./len(r)
+      b_mean = sum(b)*1./len(b)
+      log_prob_sum_sampled_mean = sum(log_prob_sum_sampled)*1./len(log_prob_sum_sampled)
+      tf.logging.info("sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_prob_sum_sampled_mean: {}".format(sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_sum_sampled_mean))
       

@@ -1,5 +1,5 @@
 export PYTHONIOENCODING=UTF-8
-export DATA_PATH="$(pwd)/data/sum_data"
+export DATA_PATH="$(pwd)/data/giga_small"
 
 export VOCAB_SOURCE=${DATA_PATH}/vocab.bpe.32000
 export VOCAB_TARGET=${DATA_PATH}/vocab.bpe.32000
@@ -37,7 +37,7 @@ python -m bin.train \
         - $DEV_SOURCES
        target_files:
         - $DEV_TARGETS" \
-  --batch_size 32 \
+  --batch_size 64 \
   --eval_every_n_steps 5000 \
   --train_steps $TRAIN_STEPS \
   --output_dir $MODEL_DIR
