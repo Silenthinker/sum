@@ -183,6 +183,29 @@ class TrainSampleHook(TrainingHook):
     # Create the sample directory
     if self._sample_dir is not None:
       gfile.MakeDirs(self._sample_dir)
+    
+    words=[]
+    features=[]
+    emb_size=0
+    f = open("topic_giga","r")
+    texts = f.readlines()
+    for line in texts: 
+        emb_size=len(line.split('\t')[1].split(' '))
+        words.append(line.split('\t')[0])
+        features.append([float(probability) for probability in line.split('\t')[1].split(' ')[0:emb_size]])
+    f.close()    
+    samples_size = len(words)    
+    topic_words=[]
+    for i in xrange(0,emb_size):
+        pro_dict={}
+        for j in xrange(0,samples_size):
+            pro_dict[words[j]]=features[j][i]
+        prob_list = sorted(pro_dict.items(),key=lambda d:d[1],reverse=True)
+        topic_words = topic_words + [item[0] for item in prob_list[0:100]]
+    topic_words = list(set(topic_words))
+    topic_words_tensor = tf.convert_to_tensor(topic_words,dtype=tf.string)
+
+    self._topic_words = graph_utils.add_dict_to_collection({"topic_words_tensor":topic_words_tensor},"topic_words_tensor")
 
   def before_run(self, _run_context):
     self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
@@ -190,7 +213,8 @@ class TrainSampleHook(TrainingHook):
       fetches = {
           "predicted_tokens": self._pred_dict["predicted_tokens"],
           "target_words": self._pred_dict["labels.target_tokens"],
-          "target_len": self._pred_dict["labels.target_len"]
+          "target_len": self._pred_dict["labels.target_len"],
+          "topic_words":self._topic_words["topic_words"]
       }
       return tf.train.SessionRunArgs([fetches, self._global_step])
     return tf.train.SessionRunArgs([{}, self._global_step])

@@ -239,5 +239,3 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     att_out = tf.concat([att_out_message,att_out_topic],2)
 
   return att_out
-
-

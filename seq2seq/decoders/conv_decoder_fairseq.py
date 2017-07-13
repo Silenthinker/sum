@@ -321,7 +321,10 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     ######   
     next_layer_size = next_layer.get_shape().as_list()[-1]
     next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
-      
+ 
+    topic_words_tensor = graph_utils.get_dict_from_collection("topic_words_tensor")  
+    source_vocab_to_id = graph_utils.get_dict_from_collection("source_vocab_to_id")
+    topic_words_id_tensor = source_vocab_to_id.lookup(topic_words_tensor)
        
     #####logits = _transpose_batch_time(next_layer)    ###logits:(13, 128, 31114)   # [T, B, V]
     logits_message = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
