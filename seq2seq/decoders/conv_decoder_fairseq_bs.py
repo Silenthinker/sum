@@ -222,7 +222,7 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
     
     return self._combiner_fn(inputs, seq_pos_embed_batch)
 
-  def step(self, time, inputs, state, name=None):
+  def step(self, time, inputs, state, batch_size=None, name=None, sample=False):
    
     cur_inputs = inputs[:,0:time+1,:] 
     zeros_padding = inputs[:,time+2:,:] 
@@ -237,6 +237,8 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
         beam_state=beam_state,
         config=self.config)
 
+    dummy_log_prob = tf.zeros([self.batch_size]) # to make same outputs as in conv_decoder_fairseq
+
     finished, next_inputs = self.next_inputs(sample_ids=bs_output.predicted_ids)
     next_inputs = tf.reshape(next_inputs, [self.config.beam_width, 1, inputs.get_shape().as_list()[-1]])
     next_inputs = tf.concat([cur_inputs, next_inputs], axis=1)
@@ -248,7 +250,7 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
         log_probs=beam_state.log_probs,
         scores=bs_output.scores,
         beam_parent_ids=bs_output.beam_parent_ids)
-    return outputs, (enc_output,beam_state), next_inputs, finished
+    return outputs, (enc_output,beam_state), next_inputs, finished, dummy_log_prob
 
 
     

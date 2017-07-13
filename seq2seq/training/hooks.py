@@ -432,6 +432,10 @@ class TrainUpdateLoss(TrainingHook):
 
   def __init__(self, params, model_dir, run_config):
     super(TrainUpdateLoss, self).__init__(params, model_dir, run_config)
+    self._timer = SecondOrStepTimer(
+        every_secs=self.params["every_n_secs"],
+        every_steps=self.params["every_n_steps"])
+    self._should_trigger = False
     self._pred_dict = {}
     self._iter_count = 0
     self._global_step = None
@@ -443,7 +447,9 @@ class TrainUpdateLoss(TrainingHook):
   def default_params():
     return {
         "source_delimiter": " ",
-        "target_delimiter": " "
+        "target_delimiter": " ",
+        "every_n_secs": None,
+        "every_n_steps": 1
     }
 
   def begin(self):
@@ -481,6 +487,8 @@ class TrainUpdateLoss(TrainingHook):
   def after_run(self, _run_context, run_values):
 
     result_dict, step = run_values.results
+    self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
+    self._iter_count = step
 
     # Get results
     if self._is_rl:
@@ -491,13 +499,12 @@ class TrainUpdateLoss(TrainingHook):
 
       # decode tokens from byte to string and prepare for blue evaluation 
       _, ref_decoded = utils.decode_tokens_for_blue(target_words[:, 1:], self._target_delimiter)
-      ref_decoded = [[seq] for seq in ref_decoded]
       
       # compute bleu scores for sampled generator and greedy generator
       # r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
       # b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
-      r = [rouge_scorer.evaluate([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
-      b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
+      r = [rouge_scorer.evaluate([[[k]]], [[v]])["ROUGE-L"]  for k, v in zip(ref_decoded, decoded_sampled)]
+      b = [rouge_scorer.evaluate([[[k]]], [[v]])["ROUGE-L"] for k, v in zip(ref_decoded, decoded_greedy)]
       norms = [sum(x) for x in masks]
       
       fetch = [
@@ -516,5 +523,7 @@ class TrainUpdateLoss(TrainingHook):
       r_mean = sum(r)*1./len(r)
       b_mean = sum(b)*1./len(b)
       log_prob_sum_sampled_mean = sum(log_prob_sum_sampled)*1./len(log_prob_sum_sampled)
-      tf.logging.info("sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_prob_sum_sampled_mean: {}".format(sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_sum_sampled_mean))
+      if self._should_trigger:
+        tf.logging.info("step: {}, sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_prob_sum_sampled_mean: {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_sum_sampled_mean))
+        self._timer.update_last_triggered_step(self._iter_count - 1)
       

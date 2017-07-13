@@ -348,14 +348,14 @@ class Seq2SeqModel(ModelBase):
         norms = tf.placeholder(tf.float32, [None])
 
         norm = tf.reduce_sum(norms)
-        # diff  =  rewards - base_line
-        diff = rewards
+        diff  =  base_line - rewards
+        # diff = rewards
 
         sum_loss = tf.reduce_sum(
           tf.multiply(
-            tf.negative(log_prob_sum_sampled), diff)
+            log_prob_sum_sampled, diff)
           ) / norm # x * y element-wise, give [T, B] log_prob_sum_sampled
-        lbd = 1.0
+        lbd = 0.5
         loss_rl = lbd * sum_loss + (1 - lbd) * loss
       else:
         losses, loss = self.compute_loss(decoder_outputs["outputs"], features, labels)
@@ -369,7 +369,7 @@ class Seq2SeqModel(ModelBase):
         gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
       #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
       if is_rl:
-        train_op_rl = self._build_train_op(loss, gradient_multipliers=gradient_multipliers) # loss_rl
+        train_op_rl = self._build_train_op(loss_rl, gradient_multipliers=gradient_multipliers) # loss_rl
 
         # graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
         graph_utils.add_dict_to_collection({

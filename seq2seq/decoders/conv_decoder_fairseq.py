@@ -214,7 +214,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     cur_inputs_pos = self.add_position_embedding(cur_inputs, time, batch_size)
     
     enc_output = state 
-    logits = self.infer_conv_block(enc_output, cur_inputs_pos, is_train=False) # [B, V]
+    with tf.device("/gpu:1"):  
+      logits = self.infer_conv_block(enc_output, cur_inputs_pos, is_train=False) # [B, V]
     
     
     softmax = tf.nn.softmax(logits, dim=-1, name=None) # [B, self.V]
@@ -225,10 +226,12 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     else:
       sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32) # greedy... [B]
     
-    one_hot = tf.one_hot(sample_ids, log_softmax.get_shape().as_list()[1], axis=-1) # [B, V]
-    log_prob = tf.reduce_sum(tf.multiply(one_hot, log_softmax), axis=1) # [B, 1] # compute log prob of sampling the word
-    log_prob.set_shape([batch_size])
-    
+    # one_hot = tf.one_hot(sample_ids, log_softmax.get_shape().as_list()[1], axis=-1) # [B, V]
+    # log_prob = tf.reduce_sum(tf.multiply(one_hot, log_softmax), axis=1) # [B, 1] # compute log prob of sampling the word
+    # log_prob.set_shape([batch_size])
+    indices = tf.stack([tf.range(0, batch_size), sample_ids], axis=1)
+    log_prob = tf.gather_nd(log_softmax, indices)
+
     finished, next_inputs = self.next_inputs(sample_ids=sample_ids, batch_size=batch_size)
     next_inputs = tf.reshape(next_inputs, [batch_size, 1, inputs.get_shape().as_list()[-1]])
     next_inputs = tf.concat([cur_inputs, next_inputs], axis=1)
@@ -335,9 +338,10 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         attention_values_length=enc_output.attention_values_length)
       self._setup(initial_state=enc_output)
       with tf.variable_scope("decoder"):
+        # with tf.device("/gpu:1"):  
         initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
         logits = self.infer_conv_block(initial_state, initial_inputs, is_train=False)
-        
+      
       outputs, final_state, log_prob_sum = dynamic_decode(
           decoder=self,
           output_time_major=True,
@@ -366,7 +370,6 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         inputs=labels,
         keep_prob=self.params["embedding_dropout_keep_prob"],
         is_training=self.mode == tf.contrib.learn.ModeKeys.TRAIN)
-    
     next_layer = self.conv_block(enc_output, inputs, True)
       
        
