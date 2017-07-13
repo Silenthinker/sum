@@ -321,15 +321,53 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     ######   
     next_layer_size = next_layer.get_shape().as_list()[-1]
     next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
- 
-    topic_words_tensor = graph_utils.get_dict_from_collection("topic_words_tensor")  
-    source_vocab_to_id = graph_utils.get_dict_from_collection("source_vocab_to_id")
+    
+    
+    ##############load topic words
+    words=[]
+    features=[]
+    emb_size=0
+    topic_word_num=200
+    f = open("topic_giga","r")
+    texts = f.readlines()
+    for line in texts: 
+        emb_size=len(line.split('\t')[1].split(' '))
+        words.append(line.split('\t')[0])
+        features.append([float(probability) for probability in line.split('\t')[1].split(' ')[0:emb_size]])
+    f.close()    
+    samples_size = len(words)    
+    topic_words=[]
+    for i in range(0,emb_size):
+        pro_dict={}
+        for j in range(0,samples_size):
+            pro_dict[words[j]]=features[j][i]
+        prob_list = sorted(pro_dict.items(),key=lambda d:d[1],reverse=True)
+        topic_words = topic_words + [item[0] for item in prob_list[0:topic_word_num]]
+    topic_words = list(set(topic_words))
+    ###topic_words_tensor = tf.convert_to_tensor(topic_words,dtype=tf.string)
+    topic_words_tensor = tf.constant(topic_words,dtype=tf.string)
+     
+    ########topic_words_tensor = graph_utils.get_dict_from_collection("topic_words")["topic_words"]  
+    source_vocab_to_id = graph_utils.get_dict_from_collection("vocab_tables")["source_vocab_to_id"]
     topic_words_id_tensor = source_vocab_to_id.lookup(topic_words_tensor)
        
     #####logits = _transpose_batch_time(next_layer)    ###logits:(13, 128, 31114)   # [T, B, V]
     logits_message = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
     logits_topic = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
-    logits = tf.add(logits_message,logits_topic)
+    print(logits_message.get_shape())  #####(?, ?, 31114)
+    
+    vocab_size = logits_message.get_shape().as_list()[-1]
+    #####b_size = logits_message.get_shape().as_list()[-2]  #None
+    #####t_size = logits_message.get_shape().as_list()[-3]  #None
+    topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
+    topic_word_location = tf.reduce_sum(topic_word_onehot,0)
+    topic_word_location = tf.expand_dims(topic_word_location, 0)
+    batch_size = tf.shape(sequence_length)[0]
+    topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
+    #####topic_word_location = tf.expand_dims(topic_word_location, 0)
+    #####topic_words_mask = tf.tile(topic_word_location,[t_size,1])
+    
+    logits = tf.add(logits_message,logits_topic*topic_words_mask)
 
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32)
     

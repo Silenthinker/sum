@@ -126,53 +126,53 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
   
   ### Load topic into memory
   with gfile.GFile("/nlp/lilianwang/conv_seq2seq_master/topic_giga") as file:
-    vocabTopic = list(line.strip("\n") for line in file)
-  vocabTopic_size = len(vocabTopic)
+    vocab_topic = list(line.strip("\n") for line in file)
+  vocab_topic_size = len(vocab_topic)
     
-  vocabTopic, topicEmbedding = zip(*[_.split("\t") for _ in vocabTopic])
-  ######vocabTopic, topicEmbedding = zip(*[ [_.split(" ")[0], ' '.join(_.split(" ")[1:257])] for _ in vocabTopic])
-  topicEmbedding = [list( float(_) for _ in _.split(" ") ) for _ in topicEmbedding]
-  topicEmbSize = len(topicEmbedding[0])
-  print("topicEmbSize:"+str(topicEmbSize))
+  vocab_topic, topic_embedding = zip(*[_.split("\t") for _ in vocab_topic])
+  ######vocab_topic, topic_embedding = zip(*[ [_.split(" ")[0], ' '.join(_.split(" ")[1:257])] for _ in vocab_topic])
+  topic_embedding = [list( float(_) for _ in _.split(" ") ) for _ in topic_embedding]
+  topic_emb_size = len(topic_embedding[0])
+  print("topic_emb_size:"+str(topic_emb_size))
   
-  vocabTopic = list(vocabTopic)
+  vocab_topic = list(vocab_topic)
   
-  special_vocabTopic = get_special_vocab(vocabTopic_size)
-  vocabTopic += list(special_vocabTopic._fields)
-  vocabTopic_size += len(special_vocabTopic)
-  topicEmbedding += [[float(0)]*topicEmbSize for _ in list(special_vocabTopic._fields)]
-  print("vocabTopic_size:"+str(vocabTopic_size))
+  special_vocabTopic = get_special_vocab(vocab_topic_size)
+  vocab_topic += list(special_vocabTopic._fields)
+  vocab_topic_size += len(special_vocabTopic)
+  topic_embedding += [[float(0)]*topic_emb_size for _ in list(special_vocabTopic._fields)]
+  print("vocab_topic_size:"+str(vocab_topic_size))
   
   """  
   for word in vocab:
-      if vacabTopicDict.has_key(word):
-          vacabTopicDict[word] = topicEmbedding[i]
+      if vacab_topic_dict.has_key(word):
+          vacab_topic_dict[word] = topic_embedding[i]
       else:
-          vacabTopicDict[word] = [0]*256
+          vacab_topic_dict[word] = [0]*256
   """
 
-  vacabTopicDict = []
+  vacab_topic_dict = []
   for vocab_idx in idx:
-      if vocab[vocab_idx] in vocabTopic:
-         vacabTopicDict.append(topicEmbedding[vocabTopic.index(vocab[vocab_idx])])
+      if vocab[vocab_idx] in vocab_topic:
+         vacab_topic_dict.append(topic_embedding[vocab_topic.index(vocab[vocab_idx])])
       else:
-         vacabTopicDict.append( [float(0)]*topicEmbSize ) 
+         vacab_topic_dict.append( [float(0)]*topic_emb_size ) 
          
-  vacab_topic_emb_tensor = tf.constant(vacabTopicDict,dtype=tf.float32)
+  vacab_topic_emb_tensor = tf.constant(vacab_topic_dict,dtype=tf.float32)
 
-  tf.logging.info("Creating topic word vocabulary lookup table of size %d", vocabTopic_size)
+  tf.logging.info("Creating topic word vocabulary lookup table of size %d", vocab_topic_size)
 
   """
-  vocabTopic_tensor = tf.constant(vocabTopic)
-  topicEmbedding_tensor = tf.constant(topicEmbedding, dtype=tf.float32)
+  vocabTopic_tensor = tf.constant(vocab_topic)
+  topicEmbedding_tensor = tf.constant(topic_embedding, dtype=tf.float32)
 
   # Create word -> topic embedding mapping
   vocab_to_embedding_init = tf.contrib.lookup.KeyValueTensorInitializer(
       vocabTopic_tensor, topicEmbedding_tensor, tf.string, tf.float32)
-  vocab_to_embedding_table = tf.contrib.lookup.HashTable(vocab_to_embedding_init,[float(0)]*topicEmbSize)  ###wrong
+  vocab_to_embedding_table = tf.contrib.lookup.HashTable(vocab_to_embedding_init,[float(0)]*topic_emb_size)  ###wrong
   """
     
-  ###topicEmbedding = tf.constant(np.array(topicEmbedding))
+  ###topic_embedding = tf.constant(np.array(topic_embedding))
 
   return vocab_to_id_table, id_to_vocab_table, word_to_count_table, vacab_topic_emb_tensor, vocab_size
 
