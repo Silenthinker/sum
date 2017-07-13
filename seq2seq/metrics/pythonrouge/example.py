@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 import sys
+import os 
+
 from pythonrouge.pythonrouge import Pythonrouge
 
 
 if __name__ == '__main__':
-    ROUGE_path = "./pythonrouge/RELEASE-1.5.5/ROUGE-1.5.5.pl"
-    data_path = "./pythonrouge/RELEASE-1.5.5/data"
+    root = os.path.dirname(os.path.abspath(__file__))
+    ROUGE_path = os.path.join(root, "pythonrouge/RELEASE-1.5.5/ROUGE-1.5.5.pl")
+    data_path = os.path.join(root, "pythonrouge/RELEASE-1.5.5/data")
     summary_dir = "./sample/summary/"
     reference_dir = "./sample/reference/"
     # setting rouge options
