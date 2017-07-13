@@ -255,7 +255,7 @@ class TrainSampleHook(TrainingHook):
       
       target_str = self._target_delimiter.encode("utf-8").join(
           target_slice).decode("utf-8")
-      result_str += target_str + "\n"
+      result_str += "REF: " + target_str + "\n"
       if self._is_rl:
         # result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str_greedy]))
         # result_str += "BLEU of pred_sampled: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str_sampled]))
@@ -263,7 +263,7 @@ class TrainSampleHook(TrainingHook):
         result_str += "ROUGE of pred_sampled: {}\n\n".format(rouge_scorer.evaluate([[[target_str]]], [[predicted_str_sampled]]))
       else:
         # result_str += "BLEU of pred_greedy: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str]))
-        result_str += "ROUGE of pred_greedy: {}\n\n".format(rouge_scorer.evaluate_captions([[[target_str]]], [[predicted_str]]))
+        result_str += "ROUGE of pred_greedy: {}\n\n".format(rouge_scorer.evaluate([[[target_str]]], [[predicted_str]]))
     result_str += ("=" * 100) + "\n\n"
     tf.logging.info(result_str)
     if self._sample_dir:
@@ -494,7 +494,9 @@ class TrainUpdateLoss(TrainingHook):
       ref_decoded = [[seq] for seq in ref_decoded]
       
       # compute bleu scores for sampled generator and greedy generator
-      r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
+      # r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
+      # b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
+      r = [rouge_scorer.evaluate([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
       b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
       norms = [sum(x) for x in masks]
       
