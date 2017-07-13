@@ -307,7 +307,7 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
     
     self.init_params_in_loop()
     tf.get_variable_scope().reuse_variables()    
-    outputs, final_state = dynamic_decode(
+    outputs, final_state, _ = dynamic_decode(
         decoder=self,
         output_time_major=True,
         impute_finished=False,

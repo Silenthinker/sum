@@ -1,5 +1,5 @@
 export PYTHONIOENCODING=UTF-8
-export DATA_PATH="$(pwd)/data/sum_data"
+export DATA_PATH="$(pwd)/data/giga_small"
 
 export VOCAB_SOURCE=${DATA_PATH}/vocab.bpe.32000
 export VOCAB_TARGET=${DATA_PATH}/vocab.bpe.32000
@@ -11,10 +11,12 @@ export TEST_SOURCES=${DATA_PATH}/test.tok.clean.bpe.32000.art
 export TEST_TARGETS=${DATA_PATH}/test.tok.clean.bpe.32000.sum
 
 export MODEL_DIR="$(pwd)/sum_conv_seq2seq"
-export PRED_DIR=${MODEL_DIR}/pred
+export PRED_DIR=${DATA_PATH}/summary
 
 mkdir -p ${PRED_DIR}
-'''
+
+: <<'END'
+echo "Greedy search..."
 ###with greedy search
 python -m bin.infer \
   --tasks "
@@ -28,9 +30,10 @@ python -m bin.infer \
     params:
       source_files:
         - $TEST_SOURCES" \
-  > ${PRED_DIR}/predictions.txt
+  > ${PRED_DIR}/summaryA.txt
+END
 
-'''
+echo "Beam search..."
 ###with beam search
 python -m bin.infer \
   --tasks "
@@ -47,7 +50,10 @@ python -m bin.infer \
     params:
       source_files:
         - $TEST_SOURCES" \
-  > ${PRED_DIR}/predictions.txt
+  > ${PRED_DIR}/summaryA.txt
 
+# ./bin/tools/multi-bleu.perl ${TEST_TARGETS} < ${PRED_DIR}/summaryA.txt
 
-./bin/tools/multi-bleu.perl ${TEST_TARGETS} < ${PRED_DIR}/predictions.txt
+echo "Prediction Done!"
+
+python3 seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir data/giga_small/reference/ -sum_dir data/giga_small/summary/
