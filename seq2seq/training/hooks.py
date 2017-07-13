@@ -513,17 +513,20 @@ class TrainUpdateLoss(TrainingHook):
         self._train_dict["sum_loss"],
         self._train_dict["loss_rl"],
         self._train_dict["log_prob_sum_sampled"],
+        self._train_dict["log_probs"]
         ]
       feed_dict = {
         self._train_dict["rewards"]: r,
         self._train_dict["base_line"]: b,
         self._train_dict["norms"]: norms
         }
-      _, loss, sum_loss, loss_rl, log_prob_sum_sampled = self._session.run(fetch, feed_dict)
+      _, loss, sum_loss, loss_rl, log_prob_sum_sampled, log_probs = self._session.run(fetch, feed_dict)
       r_mean = sum(r)*1./len(r)
       b_mean = sum(b)*1./len(b)
       log_prob_sum_sampled_mean = sum(log_prob_sum_sampled)*1./len(log_prob_sum_sampled)
       if self._should_trigger:
         tf.logging.info("step: {}, sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_prob_sum_sampled_mean: {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_sum_sampled_mean))
         self._timer.update_last_triggered_step(self._iter_count - 1)
+        tf.logging.info("log_probs: {}, sampled: {}".format(log_probs.shape, result_dict["predicted_tokens_sampled"].shape))
+        tf.logging.info("sampled: {}, mask: {}".format(len(decoded_sampled[0].split(" ")), sum(masks[0])))
       

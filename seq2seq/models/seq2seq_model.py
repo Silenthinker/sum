@@ -328,7 +328,9 @@ class Seq2SeqModel(ModelBase):
       if is_rl:
         _names = ["train", "greedy", "sampled"]
         decoder_outputs_dict = dict(zip(_names, decoder_outputs)) # dict
-        log_prob_sum_sampled = decoder_outputs_dict["sampled"]["log_prob_sum"]      
+        log_probs = tf.transpose(decoder_outputs_dict["sampled"]["log_prob_sum"].stack(), perm=[1, 0])
+        tf.logging.info("log_probs: {}".format(log_probs.shape))
+        log_prob_sum_sampled = tf.reduce_sum(log_probs, axis=1)
         losses, loss = self.compute_loss(decoder_outputs_dict["train"]["outputs"], features, labels)
 
         predictions_dict = {k:self._create_predictions(decoder_output=v["outputs"],
@@ -345,7 +347,7 @@ class Seq2SeqModel(ModelBase):
         
         rewards = tf.placeholder(tf.float32, [None])
         base_line = tf.placeholder(tf.float32, [None])
-        norms = tf.placeholder(tf.float32, [None])
+        masks = tf.placeholder(tf.float32, [None])
 
         norm = tf.reduce_sum(norms)
         diff  =  base_line - rewards
@@ -378,6 +380,7 @@ class Seq2SeqModel(ModelBase):
           "norms": norms,
           "sum_loss": sum_loss,
           "loss_rl": loss_rl,
+          "log_probs": log_probs,
           "log_prob_sum_sampled": log_prob_sum_sampled,
           "diff": diff,
           "train_op_rl": train_op_rl,

@@ -342,7 +342,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
         logits = self.infer_conv_block(initial_state, initial_inputs, is_train=False)
       
-      outputs, final_state, log_prob_sum = dynamic_decode(
+      outputs, final_state, log_probs = dynamic_decode(
           decoder=self,
           output_time_major=True,
           impute_finished=False,
@@ -350,7 +350,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
           sample=sample,
           batch_size=batch_size)
     # graph_utils.add_dict_to_collection({"log_prob_sum": log_prob_sum}, "probs")
-    return {"outputs": outputs, "log_prob_sum": log_prob_sum}
+    return {"outputs": outputs, "log_prob_sum": log_probs}
     
 
   def conv_decoder_train(self, enc_output, labels, sequence_length):
