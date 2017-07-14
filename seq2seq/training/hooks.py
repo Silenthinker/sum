@@ -497,6 +497,7 @@ class TrainUpdateLoss(TrainingHook):
       _, decoded_greedy = utils.decode_tokens_for_blue(result_dict["predicted_tokens_greedy"], self._target_delimiter)
       masks, decoded_sampled = utils.decode_tokens_for_blue(result_dict["predicted_tokens_sampled"], self._target_delimiter)
 
+      norms = [sum(x) for x in masks]
       # decode tokens from byte to string and prepare for blue evaluation 
       _, ref_decoded = utils.decode_tokens_for_blue(target_words[:, 1:], self._target_delimiter)
       
@@ -511,22 +512,22 @@ class TrainUpdateLoss(TrainingHook):
         self._train_dict["loss"],
         self._train_dict["sum_loss"],
         self._train_dict["loss_rl"],
-        self._train_dict["log_probs_mask_mean"],
-        self._train_dict["log_probs"]
+        self._train_dict["log_probs_mean"],
         ]
 
       feed_dict = {
         self._train_dict["rewards"]: r,
         self._train_dict["base_line"]: b,
-        self._train_dict["masks"]: masks
+        self._train_dict["norms"]: norms
         }
 
-      _, loss, sum_loss, loss_rl, log_probs_mask_mean, log_probs = self._session.run(fetch, feed_dict)
+      _, loss, sum_loss, loss_rl, log_probs_mean = self._session.run(fetch, feed_dict)
       r_mean = sum(r)*1./len(r)
       b_mean = sum(b)*1./len(b)
       
       if self._should_trigger:
-        tf.logging.info("step: {}, sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_probs_mask_mean: {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_probs_mask_mean))
+        tf.logging.info("step: {}, sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_probs_mean: {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_probs_mean))
         self._timer.update_last_triggered_step(self._iter_count - 1)
-        tf.logging.info("sampled: {}, mask: {}".format(len(decoded_sampled[0].split(" ")), sum(masks[0])))
+        
+
       

@@ -328,7 +328,8 @@ class Seq2SeqModel(ModelBase):
       if is_rl:
         _names = ["train", "greedy", "sampled"]
         decoder_outputs_dict = dict(zip(_names, decoder_outputs)) # dict
-        log_probs = tf.transpose(decoder_outputs_dict["sampled"]["log_prob_sum"].stack(), perm=[1, 0]) # [B, T]
+        log_prob_sum = decoder_outputs_dict["sampled"]["log_prob_sum"]
+        # log_probs = tf.transpose(log_probs_arr.stack(), perm=[1, 0]) # [B, T]
         losses, loss = self.compute_loss(decoder_outputs_dict["train"]["outputs"], features, labels)
 
         predictions_dict = {k:self._create_predictions(decoder_output=v["outputs"],
@@ -345,19 +346,17 @@ class Seq2SeqModel(ModelBase):
         
         rewards = tf.placeholder(tf.float32, [None])
         base_line = tf.placeholder(tf.float32, [None])
-        # diff  =  tf.expand_dims(base_line - rewards, axis=1) # [B, 1]
-        diff  =  tf.expand_dims( - rewards, axis=1) # [B, 1]
+        # diff  =  base_line - rewards # [B]
+        diff  =  - rewards # [B]
 
-        masks = tf.placeholder(tf.float32, shape=log_probs.shape)
-        masks_mul = tf.to_float(masks)
-        norm = tf.reduce_sum(masks_mul)
-        log_probs_mask = tf.multiply(log_probs, masks_mul) # [B, T]
-        log_probs_mask_mean = tf.reduce_sum(log_probs_mask) / norm
+        norms = tf.placeholder(tf.float32, shape=[None])
+        norm = tf.reduce_sum(norms)
+        log_probs_mean = tf.reduce_sum(log_prob_sum) / norm
 
         sum_loss = tf.reduce_sum(
           tf.multiply(
-            log_probs_mask, diff)
-          ) / norm # x * y element-wise, give [T, B] log_prob_sum_sampled
+            log_prob_sum, diff)
+          ) / norm # x * y element-wise, give [T, B] log_prob_sum
         lbd = 1.0
         loss_rl = lbd * sum_loss + (1 - lbd) * loss
       else:
@@ -372,17 +371,16 @@ class Seq2SeqModel(ModelBase):
         gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
       #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
       if is_rl:
-        train_op_rl = self._build_train_op(loss_rl, gradient_multipliers=gradient_multipliers) # loss_rl
+        train_op_rl = self._build_train_op(loss, gradient_multipliers=gradient_multipliers) # loss_rl
 
         # graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
         graph_utils.add_dict_to_collection({
           "loss": loss, 
           "losses": losses, 
-          "masks": masks,
+          "norms": norms,
           "sum_loss": sum_loss,
           "loss_rl": loss_rl,
-          "log_probs": log_probs,
-          "log_probs_mask_mean": log_probs_mask_mean,
+          "log_probs_mean": log_probs_mean,
           "diff": diff,
           "train_op_rl": train_op_rl,
           "rewards": rewards,
