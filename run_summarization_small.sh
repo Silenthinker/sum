@@ -12,7 +12,7 @@ export TEST_TARGETS=${DATA_PATH}/test.tok.clean.bpe.32000.sum
 
 export TRAIN_STEPS=1000000
 
-export MODEL_DIR="$(pwd)/sum_conv_seq2seq"
+export MODEL_DIR="$(pwd)/sum_conv_seq2seq_topic"
 mkdir -p $MODEL_DIR
 
 python -m bin.train \
