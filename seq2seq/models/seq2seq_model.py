@@ -328,9 +328,7 @@ class Seq2SeqModel(ModelBase):
       if is_rl:
         _names = ["train", "greedy", "sampled"]
         decoder_outputs_dict = dict(zip(_names, decoder_outputs)) # dict
-        log_probs = tf.transpose(decoder_outputs_dict["sampled"]["log_prob_sum"].stack(), perm=[1, 0])
-        tf.logging.info("log_probs: {}".format(log_probs.shape))
-        log_prob_sum_sampled = tf.reduce_sum(log_probs, axis=1)
+        log_probs = tf.transpose(decoder_outputs_dict["sampled"]["log_prob_sum"].stack(), perm=[1, 0]) # [B, T]
         losses, loss = self.compute_loss(decoder_outputs_dict["train"]["outputs"], features, labels)
 
         predictions_dict = {k:self._create_predictions(decoder_output=v["outputs"],
@@ -347,17 +345,19 @@ class Seq2SeqModel(ModelBase):
         
         rewards = tf.placeholder(tf.float32, [None])
         base_line = tf.placeholder(tf.float32, [None])
-        masks = tf.placeholder(tf.float32, [None])
+        diff  =  tf.expand_dims(base_line - rewards, axis=1) # [B, 1]
 
-        norm = tf.reduce_sum(norms)
-        diff  =  base_line - rewards
-        # diff = rewards
+        masks = tf.placeholder(tf.float32, shape=log_probs.shape)
+        masks_mul = tf.to_float(masks)
+        norm = tf.reduce_sum(masks_mul)
+        log_probs_mask = tf.multiply(log_probs, masks_mul) # [B, T]
+        log_probs_mask_mean = tf.reduce_sum(log_probs_mask) / norm
 
         sum_loss = tf.reduce_sum(
           tf.multiply(
-            log_prob_sum_sampled, diff)
+            log_probs_mask, diff)
           ) / norm # x * y element-wise, give [T, B] log_prob_sum_sampled
-        lbd = 0.5
+        lbd = 0.998
         loss_rl = lbd * sum_loss + (1 - lbd) * loss
       else:
         losses, loss = self.compute_loss(decoder_outputs["outputs"], features, labels)
@@ -377,11 +377,11 @@ class Seq2SeqModel(ModelBase):
         graph_utils.add_dict_to_collection({
           "loss": loss, 
           "losses": losses, 
-          "norms": norms,
+          "masks": masks,
           "sum_loss": sum_loss,
           "loss_rl": loss_rl,
           "log_probs": log_probs,
-          "log_prob_sum_sampled": log_prob_sum_sampled,
+          "log_probs_mask_mean": log_probs_mask_mean,
           "diff": diff,
           "train_op_rl": train_op_rl,
           "rewards": rewards,

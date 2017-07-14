@@ -32,8 +32,7 @@ import abc
 
 import six
 
-import tensorflow as tf
-from tensorflow import stack, zeros
+from tensorflow import stack, zeros, TensorArray
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
@@ -196,7 +195,7 @@ def dynamic_decode(decoder,
         raise ValueError("maximum_iterations must be a scalar")
 
     initial_finished, initial_inputs, initial_state = decoder.initialize(batch_size)
-    log_probs = tf.TensorArray(tf.float32, size=maximum_iterations)
+    log_probs = TensorArray(dtypes.float32, size=maximum_iterations)
     zero_outputs = _create_zero_outputs(decoder.output_size,
                                         decoder.output_dtype,
                                         batch_size)
@@ -296,6 +295,19 @@ def dynamic_decode(decoder,
     final_outputs_ta = res[1]
     final_state = res[2]
     log_probs = res[5]
+
+    # For early finish, pad log_probs to full length
+    def pad_condition(time, log_probs):
+      return math_ops.logical_not(time + 1 >= maximum_iterations)
+
+    def pad_body(time, log_probs):
+      return (time + 1, log_probs.write(time, zeros([batch_size])))
+
+    final_time, logprobs = control_flow_ops.while_loop(
+        pad_condition,
+        pad_body,
+        loop_vars=[res[0], log_probs]
+      )
 
     final_outputs = nest.map_structure(lambda ta: ta.stack(), final_outputs_ta)
     if not output_time_major:
