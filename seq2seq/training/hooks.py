@@ -528,5 +528,5 @@ class TrainUpdateLoss(TrainingHook):
       if self._should_trigger:
         tf.logging.info("step: {}, sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_probs_mask_mean: {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_probs_mask_mean))
         self._timer.update_last_triggered_step(self._iter_count - 1)
-        
+        tf.logging.info("sampled: {}, mask: {}".format(len(decoded_sampled[0].split(" ")), sum(masks[0])))
       

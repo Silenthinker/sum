@@ -345,7 +345,8 @@ class Seq2SeqModel(ModelBase):
         
         rewards = tf.placeholder(tf.float32, [None])
         base_line = tf.placeholder(tf.float32, [None])
-        diff  =  tf.expand_dims(base_line - rewards, axis=1) # [B, 1]
+        # diff  =  tf.expand_dims(base_line - rewards, axis=1) # [B, 1]
+        diff  =  tf.expand_dims( - rewards, axis=1) # [B, 1]
 
         masks = tf.placeholder(tf.float32, shape=log_probs.shape)
         masks_mul = tf.to_float(masks)
@@ -357,7 +358,7 @@ class Seq2SeqModel(ModelBase):
           tf.multiply(
             log_probs_mask, diff)
           ) / norm # x * y element-wise, give [T, B] log_prob_sum_sampled
-        lbd = 0.998
+        lbd = 1.0
         loss_rl = lbd * sum_loss + (1 - lbd) * loss
       else:
         losses, loss = self.compute_loss(decoder_outputs["outputs"], features, labels)
