@@ -518,6 +518,7 @@ class TrainUpdateLoss(TrainingHook):
       feed_dict = {
         self._train_dict["rewards"]: r,
         self._train_dict["base_line"]: b
+        self._train_dict["norms"]: norms
         }
 
       _, loss, sum_loss, loss_rl, log_probs_mean = self._session.run(fetch, feed_dict)
