@@ -468,16 +468,10 @@ class TrainUpdateLoss(TrainingHook):
   def before_run(self, _run_context):
     if self._is_rl:
       fetches = {
-          "losses": self._train_dict["losses"],
-          "predicted_tokens_greedy": self._pred_dict_greedy["predicted_tokens"],
-          "predicted_tokens_sampled": self._pred_dict_sampled["predicted_tokens"],
-          "target_words": self._pred_dict["labels.target_tokens"],
           "target_len": self._pred_dict["labels.target_len"]
       }
     else:
       fetches = {
-          "losses": self._train_dict["losses"],
-          "target_words": self._pred_dict["labels.target_tokens"],
           "target_len": self._pred_dict["labels.target_len"]
       }
     sessRunArgs = tf.train.SessionRunArgs([fetches, self._global_step])
@@ -486,16 +480,25 @@ class TrainUpdateLoss(TrainingHook):
 
   def after_run(self, _run_context, run_values):
 
-    result_dict, step = run_values.results
+    _, step = run_values.results
     self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
     self._iter_count = step
 
     # Get results
     if self._is_rl:
-      losses = result_dict["losses"]
-      target_words = result_dict["target_words"]
-      _, decoded_greedy = utils.decode_tokens_for_blue(result_dict["predicted_tokens_greedy"], self._target_delimiter)
-      masks, decoded_sampled = utils.decode_tokens_for_blue(result_dict["predicted_tokens_sampled"], self._target_delimiter)
+      prep_fetches = [
+        self._pred_dict_greedy["predicted_tokens"],
+        self._pred_dict_sampled["predicted_tokens"],
+        self._pred_dict["labels.target_tokens"],
+        self._pred_dict["labels.target_len"],
+        self._train_dict["counter"],
+        self._train_dict["log_prob_sum"],
+        self._train_dict["loss"],
+      ]
+      predicted_tokens_greedy, predicted_tokens_sampled, target_words, target_len, counter, log_prob_sum, loss = self._session.run(prep_fetches)
+      
+      _, decoded_greedy = utils.decode_tokens_for_blue(predicted_tokens_greedy, self._target_delimiter)
+      masks, decoded_sampled = utils.decode_tokens_for_blue(predicted_tokens_sampled, self._target_delimiter)
 
       norms = [sum(x) for x in masks]
       # decode tokens from byte to string and prepare for blue evaluation 
@@ -507,27 +510,31 @@ class TrainUpdateLoss(TrainingHook):
       r = [rouge_scorer.evaluate([[[k]]], [[v]])["ROUGE-L"]  for k, v in zip(ref_decoded, decoded_sampled)]
       b = [rouge_scorer.evaluate([[[k]]], [[v]])["ROUGE-L"] for k, v in zip(ref_decoded, decoded_greedy)]
       
-      fetch = [
-        self._train_dict["train_op_rl"],
-        self._train_dict["loss"],
-        self._train_dict["sum_loss"],
-        self._train_dict["loss_rl"],
-        self._train_dict["log_probs_mean"]
-        ]
+      log_prob_mean = np.mean(log_prob_sum)
 
+      loss_fetches = [
+        self._train_dict["sum_loss"],
+        self._train_dict["loss_rl"]
+      ]
       feed_dict = {
         self._train_dict["rewards"]: r,
         self._train_dict["base_line"]: b,
-        self._train_dict["norms"]: norms
+        self._train_dict["norms"]: norms,
+        self._train_dict["log_prob_sum_"]: log_prob_sum
         }
+      sum_loss, loss_rl = self._session.run(loss_fetches, feed_dict)
 
-      _, loss, sum_loss, loss_rl, log_probs_mean = self._session.run(fetch, feed_dict)
+      fetch = [
+        self._train_dict["train_op_rl"],
+        ]
+
+      loss_rl = self._session.run(fetch, feed_dict)
       r_mean = sum(r)*1./len(r)
       b_mean = sum(b)*1./len(b)
       
       if self._should_trigger:
-        tf.logging.info("step: {:>5}, sum_loss: {:>7.4f}, loss: {:>7.4f}, loss_rl: {:>7.4f}, r_mean: {:>7.4f}, b_mean: {:>7.4f}, log_probs_mean: {:.4f}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, - log_probs_mean))
+        # tf.logging.info("step: {:>5}, sum_loss: {:>7.4f}, loss: {:>7.4f}, loss_rl: {:>7.4f}, r_mean: {:>7.4f}, b_mean: {:>7.4f}, log_prob_mean: {:>7.4f}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean))
+        tf.logging.info("{}, {}, {}, {}, {}, {}, {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean))
         self._timer.update_last_triggered_step(self._iter_count - 1)
-        tf.logging.info("decoded_sampled: {}, mask: {}".format(decoded_sampled[0], norms[0]))
 
       

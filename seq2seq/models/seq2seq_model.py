@@ -327,6 +327,7 @@ class Seq2SeqModel(ModelBase):
     else:
       if is_rl:
         _names = ["train", "greedy", "sampled"]
+        decoder_outputs, counter = decoder_outputs[0:3], decoder_outputs[-1]
         decoder_outputs_dict = dict(zip(_names, decoder_outputs)) # dict
         log_prob_sum = decoder_outputs_dict["sampled"]["log_prob_sum"]
         # log_probs = tf.transpose(log_probs_arr.stack(), perm=[1, 0]) # [B, T]
@@ -343,7 +344,6 @@ class Seq2SeqModel(ModelBase):
         [graph_utils.add_dict_to_collection(v, "predictions_"+k) for k, v in  predictions_dict.items()]
 
         
-        
         rewards = tf.placeholder(tf.float32, [None])
         base_line = tf.placeholder(tf.float32, [None])
         # diff  =  base_line - rewards # [B]
@@ -351,11 +351,13 @@ class Seq2SeqModel(ModelBase):
 
         norms = tf.placeholder(tf.float32, shape=[None])
         norm = tf.reduce_sum(norms)
-        log_probs_mean = tf.reduce_sum(log_prob_sum) / norm
+
+        log_prob_sum_ = tf.placeholder(tf.float32, [None])
+        log_probs_mean = tf.reduce_sum(log_prob_sum_) / norm
 
         sum_loss = tf.reduce_sum(
           tf.multiply(
-            log_prob_sum, diff)
+            log_prob_sum_, diff)
           ) / norm # x * y element-wise, give [T, B] log_prob_sum
         lbd = 1.0
         loss_rl = lbd * sum_loss + (1 - lbd) * loss
@@ -381,10 +383,13 @@ class Seq2SeqModel(ModelBase):
           "sum_loss": sum_loss,
           "loss_rl": loss_rl,
           "log_probs_mean": log_probs_mean,
+          "log_prob_sum_": log_prob_sum_,
+          "log_prob_sum": log_prob_sum,
           "diff": diff,
           "train_op_rl": train_op_rl,
           "rewards": rewards,
-          "base_line": base_line
+          "base_line": base_line,
+          "counter": counter
           }, "train")
         dummy_train_op = tf.constant([0]) # just a dummy train_op; real train_op is performed in hooks
         train_op = dummy_train_op
