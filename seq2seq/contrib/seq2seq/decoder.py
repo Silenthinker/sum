@@ -196,6 +196,7 @@ def dynamic_decode(decoder,
 
     initial_finished, initial_inputs, initial_state = decoder.initialize(batch_size)
     log_prob_sum = zeros([batch_size])
+
     zero_outputs = _create_zero_outputs(decoder.output_size,
                                         decoder.output_dtype,
                                         batch_size)
@@ -242,9 +243,11 @@ def dynamic_decode(decoder,
         `(time + 1, outputs_ta, next_state, next_inputs, next_finished)`.
       """
       (next_outputs, decoder_state, next_inputs,
-       decoder_finished, log_prob) = decoder.step(time, inputs, state, sample=sample, batch_size=batch_size)
-      next_finished = math_ops.logical_or(decoder_finished, finished)
+       decoder_finished, log_prob) = decoder.step(time, inputs, state, sample=sample, batch_size=batch_size) # decoder_finished: [B]
+      # finished: [B] accumulates the status until the execution of decoder.step(...)
       log_prob_sum = log_prob_sum + math_ops.multiply(log_prob, math_ops.to_float(math_ops.logical_not(finished))) # only add non-finished part
+      next_finished = math_ops.logical_or(decoder_finished, finished)
+      next_finished.set_shape([batch_size])
       if maximum_iterations is not None:
         next_finished = math_ops.logical_or(
             next_finished, time + 1 >= maximum_iterations)

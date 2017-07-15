@@ -384,7 +384,8 @@ class Seq2SeqModel(ModelBase):
           "diff": diff,
           "train_op_rl": train_op_rl,
           "rewards": rewards,
-          "base_line": base_line}, "train")
+          "base_line": base_line
+          }, "train")
         dummy_train_op = tf.constant([0]) # just a dummy train_op; real train_op is performed in hooks
         train_op = dummy_train_op
       else:

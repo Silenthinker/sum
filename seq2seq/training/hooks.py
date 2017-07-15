@@ -240,12 +240,12 @@ class TrainSampleHook(TrainingHook):
       predicted_str = self._target_delimiter.encode("utf-8").join(
           predicted_slice).decode("utf-8")
       if self._is_rl:
-        predicted_slice_greedy = result["predicted_tokens_greedy"][:target_len - 1]
-        predicted_str_greedy = self._target_delimiter.encode("utf-8").join(
-            predicted_slice_greedy).decode("utf-8")
-        predicted_slice_sampled = result["predicted_tokens_sampled"][:target_len - 1]
-        predicted_str_sampled = self._target_delimiter.encode("utf-8").join(
-            predicted_slice_sampled).decode("utf-8")
+        predicted_str_greedy = utils.decode_tokens_for_blue(result["predicted_tokens_greedy"], self._target_delimiter)[1][0]
+        # predicted_str_greedy = self._target_delimiter.encode("utf-8").join(
+        #     predicted_slice_greedy).decode("utf-8")
+        predicted_str_sampled = utils.decode_tokens_for_blue(result["predicted_tokens_sampled"], self._target_delimiter)[1][0]
+        # predicted_str_sampled = self._target_delimiter.encode("utf-8").join(
+        #     predicted_slice_sampled).decode("utf-8")
 
       result_str += "PREDICTED: " + predicted_str + "\n"
 
@@ -449,7 +449,7 @@ class TrainUpdateLoss(TrainingHook):
         "source_delimiter": " ",
         "target_delimiter": " ",
         "every_n_secs": None,
-        "every_n_steps": 1
+        "every_n_steps": 10
     }
 
   def begin(self):
@@ -512,13 +512,12 @@ class TrainUpdateLoss(TrainingHook):
         self._train_dict["loss"],
         self._train_dict["sum_loss"],
         self._train_dict["loss_rl"],
-        self._train_dict["log_probs_mean"],
+        self._train_dict["log_probs_mean"]
         ]
 
       feed_dict = {
         self._train_dict["rewards"]: r,
-        self._train_dict["base_line"]: b,
-        self._train_dict["norms"]: norms
+        self._train_dict["base_line"]: b
         }
 
       _, loss, sum_loss, loss_rl, log_probs_mean = self._session.run(fetch, feed_dict)
@@ -526,8 +525,8 @@ class TrainUpdateLoss(TrainingHook):
       b_mean = sum(b)*1./len(b)
       
       if self._should_trigger:
-        tf.logging.info("step: {}, sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_probs_mean: {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_probs_mean))
+        tf.logging.info("step: {:>5}, sum_loss: {:>7.4f}, loss: {:>7.4f}, loss_rl: {:>7.4f}, r_mean: {:>7.4f}, b_mean: {:>7.4f}, log_probs_mean: {:.4f}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, - log_probs_mean))
         self._timer.update_last_triggered_step(self._iter_count - 1)
-        
+        tf.logging.info("decoded_sampled: {}, mask: {}".format(decoded_sampled[0], norms[0]))
 
       

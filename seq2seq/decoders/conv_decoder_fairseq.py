@@ -172,14 +172,15 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     return outputs, final_state
    
   def next_inputs(self, sample_ids, batch_size, name=None):
-    finished = math_ops.equal(sample_ids, self.config.eos_token)
+    finished = math_ops.equal(sample_ids, self.config.eos_token) # [B]
     all_finished = math_ops.reduce_all(finished)
     next_inputs = control_flow_ops.cond(
         all_finished,
         # If we're finished, the next_inputs value doesn't matter
         lambda:  tf.nn.embedding_lookup(self.target_embedding, tf.tile([self.config.eos_token], [batch_size])),
         lambda: tf.nn.embedding_lookup(self.target_embedding, sample_ids))
-    return all_finished, next_inputs
+    # return all_finished, next_inputs
+    return finished, next_inputs
 
   def _create_position_embedding(self, lengths, maxlen):
 
@@ -343,7 +344,6 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
           maximum_iterations=maximum_iterations,
           sample=sample,
           batch_size=batch_size)
-    # graph_utils.add_dict_to_collection({"log_prob_sum": log_prob_sum}, "probs")
     return {"outputs": outputs, "log_prob_sum": log_prob_sum}
     
 
