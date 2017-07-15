@@ -50,7 +50,7 @@ python -m bin.infer \
     params:
       source_files:
         - $TEST_SOURCES" \
-  > ${PRED_DIR}/summaryA.txt
+  | sed 's/@@ //g'> ${PRED_DIR}/summaryA.txt
 
 # ./bin/tools/multi-bleu.perl ${TEST_TARGETS} < ${PRED_DIR}/summaryA.txt
 

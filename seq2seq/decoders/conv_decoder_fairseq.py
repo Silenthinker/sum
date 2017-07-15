@@ -214,8 +214,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     cur_inputs_pos = self.add_position_embedding(cur_inputs, time, batch_size)
     
     enc_output = state 
-    # with tf.device("/gpu:1"):  
-    logits = self.infer_conv_block(enc_output, cur_inputs_pos, is_train=False) # [B, V]
+    with tf.device("/gpu:1"):  
+      logits = self.infer_conv_block(enc_output, cur_inputs_pos, is_train=False) # [B, V]
     
     
     softmax = tf.nn.softmax(logits, dim=-1, name=None) # [B, self.V]
@@ -330,18 +330,12 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     '''
     maximum_iterations = self.params["max_decode_length"] - 1
     batch_size = enc_output.attention_values_length.get_shape().as_list()[0]
+    # with tf.variable_scope(tf.get_variable_scope(), reuse=False):
+    #   with tf.variable_scope("decoder"):
+    #     # with tf.device("/gpu:1"):  
+    #     initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
+    #     logits = self.infer_conv_block(initial_state, initial_inputs, is_train=False)
     with tf.variable_scope(tf.get_variable_scope(), reuse=True):
-      enc_output = EncoderOutput(
-        outputs=enc_output.outputs,
-        final_state=enc_output.final_state,
-        attention_values=enc_output.attention_values,
-        attention_values_length=enc_output.attention_values_length)
-      self._setup(initial_state=enc_output)
-      with tf.variable_scope("decoder"):
-        # with tf.device("/gpu:1"):  
-        initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
-        logits = self.infer_conv_block(initial_state, initial_inputs, is_train=False)
-      
       outputs, final_state, log_prob_sum = dynamic_decode(
           decoder=self,
           output_time_major=True,

@@ -371,7 +371,7 @@ class Seq2SeqModel(ModelBase):
         gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
       #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
       if is_rl:
-        train_op_rl = self._build_train_op(loss, gradient_multipliers=gradient_multipliers) # loss_rl
+        train_op_rl = self._build_train_op(loss_rl, gradient_multipliers=gradient_multipliers) # loss_rl
 
         # graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
         graph_utils.add_dict_to_collection({

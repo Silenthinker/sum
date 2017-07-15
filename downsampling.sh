@@ -8,11 +8,11 @@
 # then simply type:
 # ./downsampling.sh
 
-n_train=500000
+n_train=1
 n_valid=10000
 # n_test=1951
 
-seed=5
+seed=10
 
 DATA_PATH="$(pwd)/data/sum_data"
 
