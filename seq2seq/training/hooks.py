@@ -517,7 +517,7 @@ class TrainUpdateLoss(TrainingHook):
 
       feed_dict = {
         self._train_dict["rewards"]: r,
-        self._train_dict["base_line"]: b
+        self._train_dict["base_line"]: b,
         self._train_dict["norms"]: norms
         }
 
