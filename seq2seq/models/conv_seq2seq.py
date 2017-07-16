@@ -24,6 +24,8 @@ from pydoc import locate
 import tensorflow as tf
 from seq2seq.contrib.seq2seq import helper as tf_decode_helper
 
+from seq2seq import graph_utils
+
 from seq2seq.models.seq2seq_model import Seq2SeqModel
 from seq2seq.graph_utils import templatemethod
 from seq2seq.models import bridges
@@ -166,6 +168,11 @@ class ConvSeq2Seq(Seq2SeqModel):
     source_embedded = tf.nn.embedding_lookup(self.source_embedding_fairseq(),
                                              features["source_ids"])
     source_topic_emb = tf.nn.embedding_lookup(embedding_tensor,features["source_ids"])
+    
+    graph_utils.add_dict_to_collection({
+      "source_message_emb": source_embedded, 
+      "source_topic_emb": source_topic_emb
+      }, "source_emb")
     
     encoder_fn = self.encoder_class(self.params["encoder.params"], self.mode, self.source_pos_embedding_fairseq())
     return encoder_fn(source_embedded, features["source_len"], source_topic_emb)

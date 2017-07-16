@@ -259,6 +259,7 @@ class TrainSampleHook(TrainingHook):
     data_source_target = graph_utils.get_dict_from_collection("data_source_target")
     conv_enc_dict = graph_utils.get_dict_from_collection("conv_enc_dict")
     utils = graph_utils.get_dict_from_collection("utils")
+    utils = graph_utils.get_dict_from_collection("source_emb")
     for k,v in conv_dec_dict.items():
       res = self._session.run(v)
       if k == "enc_output":
