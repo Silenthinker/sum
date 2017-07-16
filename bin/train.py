@@ -219,7 +219,7 @@ def create_experiment(output_dir):
 def main(_argv):
   """The entrypoint for the script"""
 
-  os.environ["CUDA_VISIBLE_DEVICES"]= "1"
+  os.environ["CUDA_VISIBLE_DEVICES"]= "0"
 
   # Parse YAML FLAGS
   FLAGS.hooks = _maybe_load_yaml(FLAGS.hooks)
