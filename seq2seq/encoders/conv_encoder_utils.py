@@ -191,7 +191,7 @@ def conv_decoder_stack(target_embed, enc_output, inputs, nhids_list, kwidths_lis
     next_layer_message += (next_layer_message + res_inputs) * tf.sqrt(0.5) 
 
     ######topic
-    next_layer_topic = (next_layer + att_out_topic) * tf.sqrt(0.5) 
+    next_layer_topic = (next_layer + att_out_topic + att_out_message) * tf.sqrt(0.5)       ######
 
     # add res connections
     next_layer_topic += (next_layer_topic + res_inputs) * tf.sqrt(0.5) 

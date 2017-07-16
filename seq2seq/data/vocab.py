@@ -125,7 +125,7 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
   
   
   ### Load topic into memory
-  with gfile.GFile("/nlp/lilianwang/conv_seq2seq_master/topic_giga") as file:
+  with gfile.GFile("giga_lda_model0716") as file:
     vocab_topic = list(line.strip("\n") for line in file)
   vocab_topic_size = len(vocab_topic)
     

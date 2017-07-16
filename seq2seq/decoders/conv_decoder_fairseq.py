@@ -328,7 +328,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     features=[]
     emb_size=0
     topic_word_num=200
-    f = open("topic_giga","r")
+    f = open("giga_lda_model0716","r")
     texts = f.readlines()
     for line in texts: 
         emb_size=len(line.split('\t')[1].split(' '))

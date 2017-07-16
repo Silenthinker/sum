@@ -282,11 +282,11 @@ class Seq2SeqModel(ModelBase):
     # Create vocabulary lookup for source
     ###source_vocab_to_id, source_id_to_vocab, source_word_to_count, _ = \
       ###vocab.create_vocabulary_lookup_table(self.source_vocab_info.path)
-    source_vocab_to_id, source_id_to_vocab, source_word_to_count, vacab_topic_emb_tensor, _ = \
+    source_vocab_to_id, source_id_to_vocab, source_word_to_count, vocab_topic_emb_tensor, _ = \
       vocab.create_vocabulary_lookup_table_add_topics(self.source_vocab_info.path)
 
     # Create vocabulary look for target
-    target_vocab_to_id, target_id_to_vocab, target_word_to_count, vacab_topic_emb_tensor2, _ = \
+    target_vocab_to_id, target_id_to_vocab, target_word_to_count, vocab_topic_emb_tensor2, _ = \
       vocab.create_vocabulary_lookup_table_add_topics(self.target_vocab_info.path)
 
     # Add vocab tables to graph colection so that we can access them in
@@ -362,8 +362,10 @@ class Seq2SeqModel(ModelBase):
     graph_utils.add_dict_to_collection(features, "features")
     if labels:
       graph_utils.add_dict_to_collection(labels, "labels")
+      
+    print("_preprocess_add_topics")
 
-    return features, labels, vacab_topic_emb_tensor
+    return features, labels, vocab_topic_emb_tensor
 
   def compute_loss(self, decoder_output, _features, labels):
     """Computes the loss for this model.
@@ -388,9 +390,9 @@ class Seq2SeqModel(ModelBase):
   def _build(self, features, labels, params):
     # Pre-process features and labels
     ###features, labels = self._preprocess(features, labels)
-    features, labels, vacab_topic_emb_tensor = self._preprocess_add_topics(features, labels)###
+    features, labels, vocab_topic_emb_tensor = self._preprocess_add_topics(features, labels)###
 
-    encoder_output = self.encode(features, labels, vacab_topic_emb_tensor)
+    encoder_output = self.encode(features, labels, vocab_topic_emb_tensor)
     decoder_output, _, = self.decode(encoder_output, features, labels)
 
     if self.mode == tf.contrib.learn.ModeKeys.INFER:

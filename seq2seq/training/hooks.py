@@ -180,6 +180,7 @@ class TrainSampleHook(TrainingHook):
     self._iter_count = 0
     self._global_step = tf.train.get_global_step()
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
+    self._source_emb = graph_utils.get_dict_from_collection("source_emb")
     # Create the sample directory
     if self._sample_dir is not None:
       gfile.MakeDirs(self._sample_dir)
@@ -224,6 +225,15 @@ class TrainSampleHook(TrainingHook):
   def after_run(self, _run_context, run_values):
     result_dict, step = run_values.results
     self._iter_count = step
+    
+    source_emb_fetches = [
+        self._source_emb["source_message_emb"],
+        self._source_emb["source_topic_emb"],
+      ]
+    source_message_emb, source_topic_emb = self._session.run(source_emb_fetches)
+    ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
+    ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
+    
 
     if not self._should_trigger:
       return None
@@ -259,7 +269,7 @@ class TrainSampleHook(TrainingHook):
     data_source_target = graph_utils.get_dict_from_collection("data_source_target")
     conv_enc_dict = graph_utils.get_dict_from_collection("conv_enc_dict")
     utils = graph_utils.get_dict_from_collection("utils")
-    utils = graph_utils.get_dict_from_collection("source_emb")
+    ###source_emb = graph_utils.get_dict_from_collection("source_emb")
     for k,v in conv_dec_dict.items():
       res = self._session.run(v)
       if k == "enc_output":
