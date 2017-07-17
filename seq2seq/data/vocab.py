@@ -22,6 +22,8 @@ import collections
 import tensorflow as tf
 from tensorflow import gfile
 
+from seq2seq import graph_utils
+
 SpecialVocab = collections.namedtuple("SpecialVocab",
                                       ["UNK", "SEQUENCE_START", "SEQUENCE_END"])
 
@@ -159,6 +161,10 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
          vacab_topic_dict.append( [float(0)]*topic_emb_size ) 
          
   vacab_topic_emb_tensor = tf.constant(vacab_topic_dict,dtype=tf.float32)
+  
+  graph_utils.add_dict_to_collection({
+  "vacab_topic_emb_tensor": vacab_topic_emb_tensor
+  }, "vacab_topic_emb_tensor")
 
   tf.logging.info("Creating topic word vocabulary lookup table of size %d", vocab_topic_size)
 

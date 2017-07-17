@@ -181,6 +181,7 @@ class TrainSampleHook(TrainingHook):
     self._global_step = tf.train.get_global_step()
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
     self._source_emb = graph_utils.get_dict_from_collection("source_emb")
+    self._logits = graph_utils.get_dict_from_collection("logits")
     # Create the sample directory
     if self._sample_dir is not None:
       gfile.MakeDirs(self._sample_dir)
@@ -226,14 +227,17 @@ class TrainSampleHook(TrainingHook):
     result_dict, step = run_values.results
     self._iter_count = step
     
-    source_emb_fetches = [
+    source_emb_logits_fetches = [
         self._source_emb["source_message_emb"],
         self._source_emb["source_topic_emb"],
+        self._logits["logits_message"],
+        self._logits["logits_topic"],
       ]
-    source_message_emb, source_topic_emb = self._session.run(source_emb_fetches)
+    source_message_emb, source_topic_emb, logits_message, logits_topic = self._session.run(source_emb_logits_fetches)
     ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
     ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
-    
+    tf.logging.info("logits_message:{}".format(logits_message))
+    tf.logging.info("logits_topic:{}".format(logits_topic))    
 
     if not self._should_trigger:
       return None

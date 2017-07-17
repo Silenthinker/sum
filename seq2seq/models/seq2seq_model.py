@@ -151,7 +151,7 @@ class Seq2SeqModel(ModelBase):
             self.params["embedding.init_scale"]))
 
   @templatemethod("encode")
-  def encode(self, features, labels, embedding_tensor):
+  def encode(self, features, labels):
     """Encodes the inputs.
     """
     raise NotImplementedError()
@@ -370,7 +370,7 @@ class Seq2SeqModel(ModelBase):
       
     print("_preprocess_add_topics")
 
-    return features, labels, vocab_topic_emb_tensor
+    return features, labels
 
   def compute_loss(self, decoder_output, _features, labels):
     """Computes the loss for this model.
@@ -395,9 +395,9 @@ class Seq2SeqModel(ModelBase):
   def _build(self, features, labels, params):
     # Pre-process features and labels
     ###features, labels = self._preprocess(features, labels)
-    features, labels, vocab_topic_emb_tensor = self._preprocess_add_topics(features, labels)###
+    features, labels = self._preprocess_add_topics(features, labels)###
 
-    encoder_output = self.encode(features, labels, vocab_topic_emb_tensor)
+    encoder_output = self.encode(features, labels)
     decoder_output, _, = self.decode(encoder_output, features, labels)
 
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
