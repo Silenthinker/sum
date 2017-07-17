@@ -279,6 +279,9 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       "logits_message": logits_message, 
       "logits_topic": logits_topic
       }, "logits")
+        
+    logits_message = tf.nn.softmax(logits_message)
+    logits_topic = tf.nn.softmax(logits_topic)
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
             
@@ -345,6 +348,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     print(name, tensor.get_shape().as_list()) 
   
   def conv_decoder_infer(self):
+    tf.logging.info("decoder infer")
     maximum_iterations = self.params["max_decode_length"]
     
     self.init_params_in_loop()
@@ -358,6 +362,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     return outputs, final_state
 
   def conv_decoder_train(self, enc_output, labels, sequence_length):
+    tf.logging.info("decoder train")
     embed_size = labels.get_shape().as_list()[-1]
     if self.params["position_embeddings.enable"]:
       positions_embed = self._create_position_embedding(
@@ -410,7 +415,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     #####logits = _transpose_batch_time(next_layer)    ###logits:(13, 128, 31114)   # [T, B, V]
     logits_message = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
     logits_topic = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
-    print(logits_message.get_shape())  #####(?, ?, 31114)
+    ###print(logits_message.get_shape())  #####(?, ?, 31114)
     
     vocab_size = logits_message.get_shape().as_list()[-1]
     #####b_size = logits_message.get_shape().as_list()[-2]  #None
@@ -422,6 +427,9 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
     #####topic_word_location = tf.expand_dims(topic_word_location, 0)
     #####topic_words_mask = tf.tile(topic_word_location,[t_size,1])
+
+    logits_message = tf.nn.softmax(logits_message)
+    logits_topic = tf.nn.softmax(logits_topic)
     
     graph_utils.add_dict_to_collection({
       "logits_message": logits_message, 

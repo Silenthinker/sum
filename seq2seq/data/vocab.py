@@ -135,7 +135,7 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
   ######vocab_topic, topic_embedding = zip(*[ [_.split(" ")[0], ' '.join(_.split(" ")[1:257])] for _ in vocab_topic])
   topic_embedding = [list( float(_) for _ in _.split(" ") ) for _ in topic_embedding]
   topic_emb_size = len(topic_embedding[0])
-  print("topic_emb_size:"+str(topic_emb_size))
+  ###print("topic_emb_size:"+str(topic_emb_size))
   
   vocab_topic = list(vocab_topic)
   
@@ -143,7 +143,7 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
   vocab_topic += list(special_vocabTopic._fields)
   vocab_topic_size += len(special_vocabTopic)
   topic_embedding += [[float(0)]*topic_emb_size for _ in list(special_vocabTopic._fields)]
-  print("vocab_topic_size:"+str(vocab_topic_size))
+  ###print("vocab_topic_size:"+str(vocab_topic_size))
   
   """  
   for word in vocab:

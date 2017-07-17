@@ -180,8 +180,8 @@ def conv_decoder_stack(target_embed, enc_output, inputs, nhids_list, kwidths_lis
     
     ######
     att_out_size = att_out.get_shape().as_list()[-1]      #k
-    print("att_out length:"+str(att_out.get_shape()))
-    print("att_out_size:"+str(att_out_size))
+    ###print("att_out length:"+str(att_out.get_shape()))
+    ###print("att_out_size:"+str(att_out_size))
     att_out_message, att_out_topic = tf.split(att_out,[tf.cast(att_out_size/2,tf.int64),tf.cast(att_out_size/2,tf.int64)],2)    
 
     ######message    
@@ -191,10 +191,14 @@ def conv_decoder_stack(target_embed, enc_output, inputs, nhids_list, kwidths_lis
     next_layer_message += (next_layer_message + res_inputs) * tf.sqrt(0.5) 
 
     ######topic
-    next_layer_topic = (next_layer + att_out_topic + att_out_message) * tf.sqrt(0.5)       ######
+    ###embed_size = target_embed.get_shape().as_list()[-1]
+    ###encoder_output_a_message, encoder_output_a_topic = tf.split(enc_output.outputs,[embed_size,embed_size],2) ######
+    ###enc_output_hidden_state=linear_mapping_weightnorm(encoder_output_a_message, next_layer.get_shape().as_list()[-1], var_scope_name="linear_mapping_enc_output_addto_before_softmax")
+    next_layer_topic = (next_layer + att_out_topic + att_out_message) * tf.sqrt(0.5)       #########reinforce the message information
 
     # add res connections
-    next_layer_topic += (next_layer_topic + res_inputs) * tf.sqrt(0.5) 
+    ###########next_layer_topic += (next_layer_topic + res_inputs) * tf.sqrt(0.5) ##########
+    next_layer_topic = (next_layer_topic + res_inputs) * tf.sqrt(0.5)
     
     
     next_layer_output = tf.concat([next_layer_message,next_layer_topic],2)
@@ -205,13 +209,13 @@ def conv_decoder_stack(target_embed, enc_output, inputs, nhids_list, kwidths_lis
 def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
   with tf.variable_scope("attention_layer_" + str(layer_idx)):
     embed_size = target_embed.get_shape().as_list()[-1]      #k
-    print("target_embed_size:"+str(embed_size))
+    ###print("target_embed_size:"+str(embed_size))
     dec_hidden_proj = linear_mapping_weightnorm(decoder_hidden, embed_size, var_scope_name="linear_mapping_att_query")  # M*N1*k1 --> M*N1*k
     dec_rep = (dec_hidden_proj + target_embed) * tf.sqrt(0.5)   ########highway?
  
     ###encoder_output_a = encoder_output.outputs
     ###encoder_output_c = encoder_output.attention_values    # M*N2*K
-    print("encoder_output.attention_values length[0]:"+str(tf.shape(encoder_output.attention_values)[0])+" encoder_output.attention_values length[1]:"+str(tf.shape(encoder_output.attention_values)[1]))
+    ###print("encoder_output.attention_values length[0]:"+str(tf.shape(encoder_output.attention_values)[0])+" encoder_output.attention_values length[1]:"+str(tf.shape(encoder_output.attention_values)[1]))
 
     encoder_output_a_message, encoder_output_a_topic = tf.split(encoder_output.outputs,[embed_size,embed_size],2) ######
     encoder_output_c_message, encoder_output_c_topic = tf.split(encoder_output.attention_values,[embed_size,embed_size],2)  ######
@@ -221,6 +225,7 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     att_score_message = tf.nn.softmax(att_score_message)        
   
     length_message = tf.cast(tf.shape(encoder_output_c_message), tf.float32)
+    tf.logging.info("######make_attention length message:{}".format(length_message[1]))
 
     att_out_message = tf.matmul(att_score_message, encoder_output_c_message) * length_message[1] * tf.sqrt(1.0/length_message[1])    #M*N1*N2  ** M*N2*K   --> M*N1*k     
 
@@ -228,9 +233,14 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     ######
 
     att_score_topic = tf.matmul(dec_rep, encoder_output_a_topic, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
+    ######embed_size = target_embed.get_shape().as_list()[-1]
+    ######encoder_output_a_message, encoder_output_a_topic = tf.split(encoder_output.outputs,[embed_size,embed_size],2) ######
+    #enc_output_hidden_state=linear_mapping_weightnorm(encoder_output_a_message, att_score_topic.get_shape().as_list()[-1], var_scope_name="linear_mapping_enc_output_addto_topic_attention")
+    #att_score_topic = att_score_topic + enc_output_hidden_state
     att_score_topic = tf.nn.softmax(att_score_topic)        
   
     length_topic = tf.cast(tf.shape(encoder_output_c_topic), tf.float32)
+    tf.logging.info("######make_attention length topic:{}".format(length_topic[1]))
 
     att_out_topic = tf.matmul(att_score_topic, encoder_output_c_topic) * length_topic[1] * tf.sqrt(1.0/length_topic[1])    #M*N1*N2  ** M*N2*K   --> M*N1*k     
 

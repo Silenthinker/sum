@@ -282,7 +282,7 @@ class Seq2SeqModel(ModelBase):
     - Creates vocabulary lookup tables for source and target vocab
     - Converts tokens into vocabulary ids
     """
-    print("_preprocess_add_topics")
+    ###print("_preprocess_add_topics")
 
     # Create vocabulary lookup for source
     ###source_vocab_to_id, source_id_to_vocab, source_word_to_count, _ = \
@@ -368,7 +368,7 @@ class Seq2SeqModel(ModelBase):
     if labels:
       graph_utils.add_dict_to_collection(labels, "labels")
       
-    print("_preprocess_add_topics")
+    #####print("_preprocess_add_topics")
 
     return features, labels
 
