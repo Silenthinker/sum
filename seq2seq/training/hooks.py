@@ -236,9 +236,7 @@ class TrainSampleHook(TrainingHook):
       target_len = result["target_len"]
       target_slice = result["target_words"][1:target_len]
 
-      predicted_slice = result["predicted_tokens"][:target_len - 1]
-      predicted_str = self._target_delimiter.encode("utf-8").join(
-          predicted_slice).decode("utf-8")
+      predicted_str = utils.decode_tokens_for_blue(result["predicted_tokens"], self._target_delimiter)[1] [0]
       if self._is_rl:
         predicted_str_greedy = utils.decode_tokens_for_blue(result["predicted_tokens_greedy"], self._target_delimiter)[1][0]
         # predicted_str_greedy = self._target_delimiter.encode("utf-8").join(
@@ -435,6 +433,7 @@ class TrainUpdateLoss(TrainingHook):
     self._timer = SecondOrStepTimer(
         every_secs=self.params["every_n_secs"],
         every_steps=self.params["every_n_steps"])
+    self._log_dir = os.path.join(self.model_dir, "logs")
     self._should_trigger = False
     self._pred_dict = {}
     self._iter_count = 0
@@ -459,6 +458,10 @@ class TrainUpdateLoss(TrainingHook):
     self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
     self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
     self._train_dict = graph_utils.get_dict_from_collection("train")
+
+    # Create the log directory
+    if self._log_dir is not None:
+      gfile.MakeDirs(self._log_dir)
 
     if "train_op_rl" in self._train_dict.keys():
       self._is_rl = True
@@ -491,11 +494,10 @@ class TrainUpdateLoss(TrainingHook):
         self._pred_dict_sampled["predicted_tokens"],
         self._pred_dict["labels.target_tokens"],
         self._pred_dict["labels.target_len"],
-        self._train_dict["counter"],
         self._train_dict["log_prob_sum"],
         self._train_dict["loss"],
       ]
-      predicted_tokens_greedy, predicted_tokens_sampled, target_words, target_len, counter, log_prob_sum, loss = self._session.run(prep_fetches)
+      predicted_tokens_greedy, predicted_tokens_sampled, target_words, target_len, log_prob_sum, loss = self._session.run(prep_fetches)
       
       _, decoded_greedy = utils.decode_tokens_for_blue(predicted_tokens_greedy, self._target_delimiter)
       masks, decoded_sampled = utils.decode_tokens_for_blue(predicted_tokens_sampled, self._target_delimiter)
@@ -514,7 +516,8 @@ class TrainUpdateLoss(TrainingHook):
 
       loss_fetches = [
         self._train_dict["sum_loss"],
-        self._train_dict["loss_rl"]
+        self._train_dict["loss_rl"],
+        self._pred_dict["labels.target_tokens"],
       ]
       feed_dict = {
         self._train_dict["rewards"]: r,
@@ -522,19 +525,29 @@ class TrainUpdateLoss(TrainingHook):
         self._train_dict["norms"]: norms,
         self._train_dict["log_prob_sum_"]: log_prob_sum
         }
-      sum_loss, loss_rl = self._session.run(loss_fetches, feed_dict)
+      sum_loss, loss_rl, ref_mid = self._session.run(loss_fetches, feed_dict)
 
       fetch = [
         self._train_dict["train_op_rl"],
         ]
-
+        
+      ref_new = self._session.run([self._pred_dict["labels.target_tokens"]])
       loss_rl = self._session.run(fetch, feed_dict)
       r_mean = sum(r)*1./len(r)
       b_mean = sum(b)*1./len(b)
       
       if self._should_trigger:
-        # tf.logging.info("step: {:>5}, sum_loss: {:>7.4f}, loss: {:>7.4f}, loss_rl: {:>7.4f}, r_mean: {:>7.4f}, b_mean: {:>7.4f}, log_prob_mean: {:>7.4f}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean))
-        tf.logging.info("{}, {}, {}, {}, {}, {}, {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean))
+        # tf.logging.info("step: {:>5}, sum_loss: {:>7.4f}, loss: {:>7}, loss_rl: {:>7.4f}, r_mean: {:>7.4f}, b_mean: {:>7.4f}, log_prob_mean: {:>7.4f}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean))
+        log_outputs = "step: {}, sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_prob_mean: {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean)
+        tf.logging.info("ref old: {}".format(target_words))
+        tf.logging.info("ref mid: {}".format(ref_mid))
+        tf.logging.info("ref new: {}".format(ref_new))
+        tf.logging.info(log_outputs)
+        if self._log_dir:
+          filepath = os.path.join(self._log_dir,
+              "logs.txt")
+          with gfile.GFile(filepath, "a") as file:
+            file.write(log_outputs + "\n")
         self._timer.update_last_triggered_step(self._iter_count - 1)
 
       

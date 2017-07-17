@@ -337,14 +337,14 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     #     initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
     #     logits = self.infer_conv_block(initial_state, initial_inputs, is_train=False)
     with tf.variable_scope(tf.get_variable_scope(), reuse=True):
-      outputs, final_state, log_prob_sum, counter = dynamic_decode(
+      outputs, final_state, log_prob_sum = dynamic_decode(
           decoder=self,
           output_time_major=True,
           impute_finished=False,
           maximum_iterations=maximum_iterations,
           sample=sample,
           batch_size=batch_size)
-    return {"outputs": outputs, "log_prob_sum": log_prob_sum}, counter
+    return {"outputs": outputs, "log_prob_sum": log_prob_sum}
     
 
   def conv_decoder_train(self, enc_output, labels, sequence_length):
@@ -386,8 +386,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         outputs = self.conv_decoder_train(enc_output=enc_output, labels=labels, sequence_length=sequence_length)
         states = None
       if rl:
-        outputs_greedy, _ = self.conv_decoder_train_infer(enc_output=enc_output, sequence_length=sequence_length, sample=False)
-        outputs_sampled, counter = self.conv_decoder_train_infer(enc_output=enc_output, sequence_length=sequence_length, sample=True)
-        return outputs, outputs_greedy, outputs_sampled, counter
+        outputs_greedy = self.conv_decoder_train_infer(enc_output=enc_output, sequence_length=sequence_length, sample=False)
+        outputs_sampled = self.conv_decoder_train_infer(enc_output=enc_output, sequence_length=sequence_length, sample=True)
+        return outputs, outputs_greedy, outputs_sampled
       else:
         return outputs

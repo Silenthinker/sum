@@ -5,5 +5,5 @@ hooks:
   - class: SyncReplicasOptimizerHook
   - class: TrainSampleHook
     params:
-      every_n_steps: 1000
-  - class: TrainUpdateLoss
+      every_n_steps: 10
+  # - class: TrainUpdateLoss
