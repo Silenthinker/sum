@@ -1,5 +1,5 @@
 export PYTHONIOENCODING=UTF-8
-export DATA_PATH="$(pwd)/data/sum_data"
+export DATA_PATH="$(pwd)/data/giga_small"
 
 export VOCAB_SOURCE=${DATA_PATH}/vocab.bpe.32000
 export VOCAB_TARGET=${DATA_PATH}/vocab.bpe.32000
