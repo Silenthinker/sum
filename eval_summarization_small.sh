@@ -10,7 +10,7 @@ export DEV_TARGETS=${DATA_PATH}/valid.tok.clean.bpe.32000.sum
 export TEST_SOURCES=${DATA_PATH}/test.tok.clean.bpe.32000.art
 export TEST_TARGETS=${DATA_PATH}/test.tok.clean.bpe.32000.sum
 
-export MODEL_DIR="$(pwd)/sum_conv_seq2seq_topic"
+export MODEL_DIR="$(pwd)/sum_conv_seq2seq_topic2"
 export PRED_DIR=${MODEL_DIR}/pred
 
 mkdir -p ${PRED_DIR}
@@ -50,4 +50,4 @@ python -m bin.infer \
   > ${PRED_DIR}/predictions.txt
 
 
-###./bin/tools/multi-bleu.perl ${TEST_TARGETS} < ${PRED_DIR}/predictions.txt
+./bin/tools/multi-bleu.perl ${TEST_TARGETS} < ${PRED_DIR}/predictions.txt

@@ -1,18 +1,18 @@
 export PYTHONIOENCODING=UTF-8
 export DATA_PATH="$(pwd)/data/giga_small"
 
-export VOCAB_SOURCE=${DATA_PATH}/vocab.bpe.32000
-export VOCAB_TARGET=${DATA_PATH}/vocab.bpe.32000
-export TRAIN_SOURCES=${DATA_PATH}/train.tok.clean.bpe.32000.art
-export TRAIN_TARGETS=${DATA_PATH}/train.tok.clean.bpe.32000.sum
-export DEV_SOURCES=${DATA_PATH}/valid.tok.clean.bpe.32000.art
-export DEV_TARGETS=${DATA_PATH}/valid.tok.clean.bpe.32000.sum
-export TEST_SOURCES=${DATA_PATH}/test.tok.clean.bpe.32000.art
-export TEST_TARGETS=${DATA_PATH}/test.tok.clean.bpe.32000.sum
+export VOCAB_SOURCE=${DATA_PATH}/vocab.50k.art
+export VOCAB_TARGET=${DATA_PATH}/vocab.50k.sum
+export TRAIN_SOURCES=${DATA_PATH}/train.tok.clean.art
+export TRAIN_TARGETS=${DATA_PATH}/train.tok.clean.sum
+export DEV_SOURCES=${DATA_PATH}/valid.tok.clean.art
+export DEV_TARGETS=${DATA_PATH}/valid.tok.clean.sum
+export TEST_SOURCES=${DATA_PATH}/test.tok.clean.art
+export TEST_TARGETS=${DATA_PATH}/test.tok.clean.sum
 
-export TRAIN_STEPS=1000000
+export TRAIN_STEPS=100000
 
-export MODEL_DIR="$(pwd)/sum_conv_seq2seq_topic"
+export MODEL_DIR="$(pwd)/sum_conv_seq2seq_topic2"
 mkdir -p $MODEL_DIR
 
 python -m bin.train \
@@ -37,7 +37,7 @@ python -m bin.train \
         - $DEV_SOURCES
        target_files:
         - $DEV_TARGETS" \
-  --batch_size 128 \
-  --eval_every_n_steps 5000 \
+  --batch_size 16 \
+  --eval_every_n_steps 100 \
   --train_steps $TRAIN_STEPS \
   --output_dir $MODEL_DIR
