@@ -219,13 +219,13 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
 
     encoder_output_a_message, encoder_output_a_topic = tf.split(encoder_output.outputs,[embed_size,embed_size],2) ######
     encoder_output_c_message, encoder_output_c_topic = tf.split(encoder_output.attention_values,[embed_size,embed_size],2)  ######
-     
+    #######print("encoder_output_a_message length[0]:"+str(encoder_output_a_message.get_shape().as_list()[0])+" encoder_output_a_message:"+str(encoder_output_a_message.get_shape().as_list()[1])) 
+    
     ###### 
     att_score_message = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
     att_score_message = tf.nn.softmax(att_score_message)        
   
     length_message = tf.cast(tf.shape(encoder_output_c_message), tf.float32)
-    tf.logging.info("######make_attention length message:{}".format(length_message[1]))
 
     att_out_message = tf.matmul(att_score_message, encoder_output_c_message) * length_message[1] * tf.sqrt(1.0/length_message[1])    #M*N1*N2  ** M*N2*K   --> M*N1*k     
 
@@ -233,14 +233,18 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     ######
 
     att_score_topic = tf.matmul(dec_rep, encoder_output_a_topic, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
-    ######embed_size = target_embed.get_shape().as_list()[-1]
-    ######encoder_output_a_message, encoder_output_a_topic = tf.split(encoder_output.outputs,[embed_size,embed_size],2) ######
-    #enc_output_hidden_state=linear_mapping_weightnorm(encoder_output_a_message, att_score_topic.get_shape().as_list()[-1], var_scope_name="linear_mapping_enc_output_addto_topic_attention")
-    #att_score_topic = att_score_topic + enc_output_hidden_state
-    att_score_topic = tf.nn.softmax(att_score_topic)        
+    """it's the idea of RNN style, but maybe not work in CNN. here have a problem, the dynamic size of encoder_output_a_message
+    ##embed_size = target_embed.get_shape().as_list()[-1]
+    ##encoder_output_a_message, encoder_output_a_topic = tf.split(encoder_output.outputs,[embed_size,embed_size],2) ######
+    ###############print("encoder_output_a_message.get_shape().as_list()[-1]:"+str(encoder_output_a_message.get_shape().as_list()[-1]))
+    enc_output_hidden_state=linear_mapping_weightnorm(encoder_output_a_message, att_score_topic.get_shape().as_list()[-1], var_scope_name="linear_mapping_enc_output_addto_topic_attention")
+    att_score_topic = att_score_topic + enc_output_hidden_state
+    """
+    att_score_topic = tf.nn.softmax(att_score_topic)################
+    ##att_score_message = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)
+    ##att_score_topic = tf.nn.softmax(att_score_topic+att_score_message) ###try this style   
   
     length_topic = tf.cast(tf.shape(encoder_output_c_topic), tf.float32)
-    tf.logging.info("######make_attention length topic:{}".format(length_topic[1]))
 
     att_out_topic = tf.matmul(att_score_topic, encoder_output_c_topic) * length_topic[1] * tf.sqrt(1.0/length_topic[1])    #M*N1*N2  ** M*N2*K   --> M*N1*k     
 

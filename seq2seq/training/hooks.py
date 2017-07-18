@@ -236,8 +236,9 @@ class TrainSampleHook(TrainingHook):
     source_message_emb, source_topic_emb, logits_message, logits_topic = self._session.run(source_emb_logits_fetches)
     ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
     ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
-    tf.logging.info("logits_message:{}".format(logits_message))
-    tf.logging.info("logits_topic:{}".format(logits_topic))    
+    if step%500 == 0:
+        tf.logging.info("logits_message:{}".format(logits_message))
+        tf.logging.info("logits_topic:{}".format(logits_topic))    
 
     if not self._should_trigger:
       return None
@@ -268,7 +269,7 @@ class TrainSampleHook(TrainingHook):
         file.write(result_str)
     self._timer.update_last_triggered_step(self._iter_count - 1)
 
-    #######
+    """
     conv_dec_dict = graph_utils.get_dict_from_collection("conv_dec_dict")
     data_source_target = graph_utils.get_dict_from_collection("data_source_target")
     conv_enc_dict = graph_utils.get_dict_from_collection("conv_enc_dict")
@@ -298,6 +299,7 @@ class TrainSampleHook(TrainingHook):
     ###for k,v in data_source_target.items():
       ###res = self._session.run(v)
       ###tf.logging.info("{}:{}".format(k,res.shape))
+    """
 
 class PrintModelAnalysisHook(TrainingHook):
   """Writes the parameters of the model to a file and stdout.
