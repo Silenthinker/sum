@@ -280,8 +280,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       "logits_topic": logits_topic
       }, "logits")
         
-    logits_message = tf.nn.softmax(logits_message)
-    logits_topic = tf.nn.softmax(logits_topic)
+    ###logits_message = tf.nn.softmax(logits_message)
+    ###logits_topic = tf.nn.softmax(logits_topic)
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
             
