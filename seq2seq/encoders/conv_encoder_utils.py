@@ -254,7 +254,7 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
 
   return att_out
 
-def topic_softmax(logits_message,logits_topic):
+def topic_softmax(logits_message,logits_topic):  ###(exp(Vi)+exp(Ki)) / (sum(exp(Vi))+sum(exp(Ki))) , if the word is a topic word in the mean while
     logits_message_exp = tf.exp(logits_message)
     logits_topic_exp = tf.exp(logits_topic)
     
@@ -264,4 +264,8 @@ def topic_softmax(logits_message,logits_topic):
     
     vocab_size = logits_message_exp.get_shape().as_list()[-1]
     logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])
+    
+    logits_output = (logits_message_exp + logits_topic_exp)/logits_exp_sum
+    
+    return logits_output
     

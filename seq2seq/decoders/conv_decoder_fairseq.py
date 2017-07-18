@@ -431,13 +431,14 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     ###logits_message = tf.nn.softmax(logits_message)
     ###logits_topic = tf.nn.softmax(logits_topic)
     
+    logits = tf.add(logits_message,logits_topic*topic_words_mask)
+    ##logits = tf.nn.softmax(logits)
+    
     graph_utils.add_dict_to_collection({
       "logits_message": logits_message, 
-      "logits_topic": logits_topic
+      "logits_topic": logits_topic,
+      "logits_output": logits
       }, "logits")
-    
-    logits = tf.add(logits_message,logits_topic*topic_words_mask)
-    logits = tf.nn.softmax(logits)
 
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32)
     

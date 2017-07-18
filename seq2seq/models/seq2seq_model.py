@@ -389,6 +389,11 @@ class Seq2SeqModel(ModelBase):
     # Calculate the average log perplexity
     loss = tf.reduce_sum(losses) / tf.to_float(
         tf.reduce_sum(labels["target_len"] - 1))
+    
+    graph_utils.add_dict_to_collection({
+      "losses": losses, 
+      "loss": loss
+      }, "loss")
 
     return losses, loss
 
