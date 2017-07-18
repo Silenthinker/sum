@@ -428,8 +428,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     #####topic_word_location = tf.expand_dims(topic_word_location, 0)
     #####topic_words_mask = tf.tile(topic_word_location,[t_size,1])
 
-    logits_message = tf.nn.softmax(logits_message)
-    logits_topic = tf.nn.softmax(logits_topic)
+    ###logits_message = tf.nn.softmax(logits_message)
+    ###logits_topic = tf.nn.softmax(logits_topic)
     
     graph_utils.add_dict_to_collection({
       "logits_message": logits_message, 
@@ -437,12 +437,14 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       }, "logits")
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
+    logits = tf.nn.softmax(logits)
 
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32)
     
     conv_dec_dict = {"enc_output":enc_output, "labels:":labels,"sequence_length":sequence_length,"decoder inputs":inputs,"next_layer":next_layer,"logits":logits}
     graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
+    tf.logging.info("decoder train end")
     return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
 
   def _build(self, enc_output, labels=None, sequence_length=None):

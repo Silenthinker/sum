@@ -253,3 +253,15 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     att_out = tf.concat([att_out_message,att_out_topic],2)
 
   return att_out
+
+def topic_softmax(logits_message,logits_topic):
+    logits_message_exp = tf.exp(logits_message)
+    logits_topic_exp = tf.exp(logits_topic)
+    
+    logits_exp_sum = tf.concat([logits_message_exp,logits_topic_exp],-1)   ##require sum of the last dim
+    logits_exp_sum = tf.reduce_sum(logits_exp_sum,-1)
+    logits_exp_sum = tf.expand_dims(logits_exp_sum,-1)
+    
+    vocab_size = logits_message_exp.get_shape().as_list()[-1]
+    logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])
+    

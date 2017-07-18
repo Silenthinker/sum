@@ -38,6 +38,6 @@ python -m bin.train \
        target_files:
         - $DEV_TARGETS" \
   --batch_size 64 \
-  --eval_every_n_steps 100 \
+  --eval_every_n_steps 5000 \
   --train_steps $TRAIN_STEPS \
   --output_dir $MODEL_DIR
