@@ -539,9 +539,6 @@ class TrainUpdateLoss(TrainingHook):
       if self._should_trigger:
         # tf.logging.info("step: {:>5}, sum_loss: {:>7.4f}, loss: {:>7}, loss_rl: {:>7.4f}, r_mean: {:>7.4f}, b_mean: {:>7.4f}, log_prob_mean: {:>7.4f}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean))
         log_outputs = "step: {}, sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_prob_mean: {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean)
-        tf.logging.info("ref old: {}".format(target_words))
-        tf.logging.info("ref mid: {}".format(ref_mid))
-        tf.logging.info("ref new: {}".format(ref_new))
         tf.logging.info(log_outputs)
         if self._log_dir:
           filepath = os.path.join(self._log_dir,

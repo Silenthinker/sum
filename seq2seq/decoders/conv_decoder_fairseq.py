@@ -329,7 +329,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       outputs: complicated structure, elements follow the shape [T, B]
       log_pro_sum: [B]
     '''
-    maximum_iterations = self.params["max_decode_length"] - 1
+    maximum_iterations = 20
     batch_size = enc_output.attention_values_length.get_shape().as_list()[0]
     # with tf.variable_scope(tf.get_variable_scope(), reuse=False):
     #   with tf.variable_scope("decoder"):
