@@ -276,9 +276,9 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
     
     graph_utils.add_dict_to_collection({
-      "logits_message": logits_message, 
-      "logits_topic": logits_topic
-      }, "logits")
+      "logits_message_infer": logits_message, 
+      "logits_topic_infer": logits_topic
+      }, "logits_infer")
         
     ###logits_message = tf.nn.softmax(logits_message)
     ###logits_topic = tf.nn.softmax(logits_topic)

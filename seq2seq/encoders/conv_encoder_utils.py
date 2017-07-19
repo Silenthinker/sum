@@ -240,9 +240,9 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     enc_output_hidden_state=linear_mapping_weightnorm(encoder_output_a_message, att_score_topic.get_shape().as_list()[-1], var_scope_name="linear_mapping_enc_output_addto_topic_attention")
     att_score_topic = att_score_topic + enc_output_hidden_state
     """
-    att_score_topic = tf.nn.softmax(att_score_topic)################
-    ##att_score_message = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)
-    ##att_score_topic = tf.nn.softmax(att_score_topic+att_score_message) ###try this style   
+    ###att_score_topic = tf.nn.softmax(att_score_topic)################
+    att_score_message = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)
+    att_score_topic = tf.nn.softmax(att_score_topic+att_score_message) ###try this style   
   
     length_topic = tf.cast(tf.shape(encoder_output_c_topic), tf.float32)
 
