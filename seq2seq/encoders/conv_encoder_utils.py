@@ -222,8 +222,8 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     #######print("encoder_output_a_message length[0]:"+str(encoder_output_a_message.get_shape().as_list()[0])+" encoder_output_a_message:"+str(encoder_output_a_message.get_shape().as_list()[1])) 
     
     ###### 
-    att_score_message = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
-    att_score_message = tf.nn.softmax(att_score_message)        
+    att_score_message_0 = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
+    att_score_message = tf.nn.softmax(att_score_message_0)        
   
     length_message = tf.cast(tf.shape(encoder_output_c_message), tf.float32)
 
@@ -241,8 +241,8 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     att_score_topic = att_score_topic + enc_output_hidden_state
     """
     ###att_score_topic = tf.nn.softmax(att_score_topic)################
-    att_score_message = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)
-    att_score_topic = tf.nn.softmax(att_score_topic+att_score_message) ###try this style   
+    ##att_score_message = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)
+    att_score_topic = tf.nn.softmax(att_score_topic+att_score_message_0) ###try this style   
   
     length_topic = tf.cast(tf.shape(encoder_output_c_topic), tf.float32)
 

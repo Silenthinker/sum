@@ -221,6 +221,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     
 
   def infer_conv_block(self, enc_output, input_embed):
+    tf.logging.info("infer_conv_block")
     # Apply dropout to embeddings
     input_embed = tf.contrib.layers.dropout(
         inputs=input_embed,
