@@ -63,6 +63,7 @@ class Seq2SeqModel(ModelBase):
         "optimizer.clip_embed_gradients": 0.1,
         "vocab_source": "",
         "vocab_target": "",
+        "topic_model":"",######topic_model: $TOPIC_MODEL
     })
     return params
 
@@ -288,11 +289,11 @@ class Seq2SeqModel(ModelBase):
     ###source_vocab_to_id, source_id_to_vocab, source_word_to_count, _ = \
       ###vocab.create_vocabulary_lookup_table(self.source_vocab_info.path)
     source_vocab_to_id, source_id_to_vocab, source_word_to_count, vocab_topic_emb_tensor, _ = \
-      vocab.create_vocabulary_lookup_table_add_topics(self.source_vocab_info.path)
+      vocab.create_vocabulary_lookup_table_add_topics(self.source_vocab_info.path,self.params["topic_model"])
 
     # Create vocabulary look for target
     target_vocab_to_id, target_id_to_vocab, target_word_to_count, vocab_topic_emb_tensor2, _ = \
-      vocab.create_vocabulary_lookup_table_add_topics(self.target_vocab_info.path)
+      vocab.create_vocabulary_lookup_table_add_topics(self.target_vocab_info.path,self.params["topic_model"])
 
     # Add vocab tables to graph colection so that we can access them in
     # other places.

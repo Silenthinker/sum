@@ -62,7 +62,7 @@ def get_special_vocab(vocabulary_size):
   return SpecialVocab(*range(vocabulary_size, vocabulary_size + 3))
 
 
-def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
+def create_vocabulary_lookup_table_add_topics(filename, filename_topic, default_value=None):
   """Creates a lookup table for a vocabulary file.
 
   Args:
@@ -127,7 +127,7 @@ def create_vocabulary_lookup_table_add_topics(filename, default_value=None):
   
   
   ### Load topic into memory
-  with gfile.GFile("giga_lda_model0716") as file:
+  with gfile.GFile(filename_topic) as file:
     vocab_topic = list(line.strip("\n") for line in file)
   vocab_topic_size = len(vocab_topic)
     
