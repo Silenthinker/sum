@@ -1,21 +1,17 @@
 export PYTHONIOENCODING=UTF-8
-export DATA_PATH="$(pwd)/data/giga_small"
 
-export VOCAB_SOURCE=${DATA_PATH}/vocab.bpe.32000
-export VOCAB_TARGET=${DATA_PATH}/vocab.bpe.32000
-export TRAIN_SOURCES=${DATA_PATH}/train.tok.clean.bpe.32000.art
-export TRAIN_TARGETS=${DATA_PATH}/train.tok.clean.bpe.32000.sum
-export DEV_SOURCES=${DATA_PATH}/valid.tok.clean.bpe.32000.art
-export DEV_TARGETS=${DATA_PATH}/valid.tok.clean.bpe.32000.sum
-export TEST_SOURCES=${DATA_PATH}/test.tok.clean.bpe.32000.art
-export TEST_TARGETS=${DATA_PATH}/test.tok.clean.bpe.32000.sum
+DATA_PATH=$1
+TEST_SOURCES=$2
+MODEL_DIR=$3
 
-export MODEL_DIR="$(pwd)/sum_conv_seq2seq"
 export PRED_DIR=${DATA_PATH}/summary
-
+export GREEDY_DIR=${PRED_DIR}/greedy
+export BEAM_DIR=${PRED_DIR}/beam
 mkdir -p ${PRED_DIR}
+mkdir -p ${GREEDY_DIR}
+mkdir -p ${BEAM_DIR}
 
-: <<'END'
+
 echo "Greedy search..."
 ###with greedy search
 python -m bin.infer \
@@ -30,8 +26,9 @@ python -m bin.infer \
     params:
       source_files:
         - $TEST_SOURCES" \
-  > ${PRED_DIR}/summaryA.txt
-END
+    | sed 's/@@ //g'> ${PRED_DIR}/summaryA.txt
+cp ${PRED_DIR}/summaryA.txt ${GREEDY_DIR}/summaryA.txt
+rm ${PRED_DIR}/summaryA.txt
 
 echo "Beam search..."
 ###with beam search
@@ -51,9 +48,16 @@ python -m bin.infer \
       source_files:
         - $TEST_SOURCES" \
   | sed 's/@@ //g'> ${PRED_DIR}/summaryA.txt
+cp ${PRED_DIR}/summaryA.txt ${BEAM_DIR}/summaryA.txt
+rm ${PRED_DIR}/summaryA.txt
 
-# ./bin/tools/multi-bleu.perl ${TEST_TARGETS} < ${PRED_DIR}/summaryA.txt
 
-echo "Prediction Done!"
+echo "Greedy result (origin):" 
+python seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir $DATA_PATH/reference/origin -sum_dir ${GREEDY_DIR}
+echo "Beam result (origin):"
+python seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir $DATA_PATH/reference/origin -sum_dir ${BEAM_DIR}
 
-python3 seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir data/giga_small/reference/ -sum_dir data/giga_small/summary/
+echo "Greedy result (tok.clean):"
+python seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir $DATA_PATH/reference/tok.clean -sum_dir ${GREEDY_DIR}
+echo "Beam result (tok.clean):"
+python seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir $DATA_PATH/reference/tok.clean -sum_dir ${BEAM_DIR}

@@ -46,6 +46,18 @@ for f in ${OUTPUT_DIR}/*.art; do
   ${OUTPUT_DIR}/mosesdecoder/scripts/training/clean-corpus-n.perl $fbase 'sum' 'art' "${fbase}.clean" 1 80
 done
 
+# Create vocabulary for non-tokenized art data
+$BASE_DIR/bin/tools/generate_vocab.py \
+   --max_vocab_size 50000 \
+  < ${OUTPUT_DIR}/train.art \
+  > ${OUTPUT_DIR}/vocab.50k.art \
+
+# Create vocabulary for non-tokenized sum data
+$BASE_DIR/bin/tools/generate_vocab.py \
+  --max_vocab_size 50000 \
+  < ${OUTPUT_DIR}/train.sum \
+  > ${OUTPUT_DIR}/vocab.50k.sum \
+
 # Create character vocabulary (on tokenized data)
 ${BASE_DIR}/bin/tools/generate_vocab.py --delimiter "" \
   < ${OUTPUT_DIR}/train.tok.clean.art \
@@ -66,13 +78,13 @@ ${BASE_DIR}/bin/tools/generate_vocab.py --delimiter "" \
 $BASE_DIR/bin/tools/generate_vocab.py \
    --max_vocab_size 50000 \
   < ${OUTPUT_DIR}/train.tok.clean.art \
-  > ${OUTPUT_DIR}/vocab.50k.art \
+  > ${OUTPUT_DIR}/vocab.tok.clean.50k.art \
 
 # Create vocabulary for sum data
 $BASE_DIR/bin/tools/generate_vocab.py \
   --max_vocab_size 50000 \
   < ${OUTPUT_DIR}/train.tok.clean.sum \
-  > ${OUTPUT_DIR}/vocab.50k.sum \
+  > ${OUTPUT_DIR}/vocab.tok.clean.50k.sum \
 
 # Generate Subword Units (BPE)
 # Clone Subword NMT

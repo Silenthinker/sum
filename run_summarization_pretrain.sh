@@ -1,4 +1,5 @@
 export PYTHONIOENCODING=UTF-8
+
 export DATA_PATH="$(pwd)/sum_data"
 
 export VOCAB_SOURCE=${DATA_PATH}/vocab.50k.art

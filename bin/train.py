@@ -274,6 +274,6 @@ def main(_argv):
 
 
 if __name__ == "__main__":
-  os.environ["CUDA_VISIBLE_DEVICES"]= '3'  
+  os.environ["CUDA_VISIBLE_DEVICES"]= '0,1'  
   tf.logging.set_verbosity(tf.logging.INFO)
   tf.app.run()
