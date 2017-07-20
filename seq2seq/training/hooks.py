@@ -182,7 +182,7 @@ class TrainSampleHook(TrainingHook):
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
     self._source_emb = graph_utils.get_dict_from_collection("source_emb")
     self._logits = graph_utils.get_dict_from_collection("logits")
-    self._logits_infer = graph_utils.get_dict_from_collection("logits_infer")
+    ##self._logits_infer = graph_utils.get_dict_from_collection("logits_infer")
     self._loss = graph_utils.get_dict_from_collection("loss")
     # Create the sample directory
     if self._sample_dir is not None:
@@ -234,19 +234,19 @@ class TrainSampleHook(TrainingHook):
         self._source_emb["source_topic_emb"],
         self._logits["logits_message"],
         self._logits["logits_topic"],
-        self._logits_infer["logits_message_infer"],
-        self._logits_infer["logits_topic_infer"],
+        #self._logits_infer["logits_message_infer"],
+        #self._logits_infer["logits_topic_infer"],
         self._loss["loss"]
       ]
-    source_message_emb, source_topic_emb, logits_message, logits_topic,logits_message_infer, logits_topic_infer,loss = self._session.run(source_emb_logits_fetches)
+    source_message_emb, source_topic_emb, logits_message, logits_topic, loss = self._session.run(source_emb_logits_fetches)
     ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
     ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
     if step%500 == 0:
         tf.logging.info("logits_message:{}".format(logits_message))
         tf.logging.info("logits_topic:{}".format(logits_topic))
     ##tf.logging.info("loss:{}".format(loss))
-    tf.logging.info("logits_message_infer:{}".format(logits_message_infer))
-    tf.logging.info("logits_topic_infer:{}".format(logits_topic_infer))
+    #tf.logging.info("logits_message_infer:{}".format(logits_message_infer))
+    #tf.logging.info("logits_topic_infer:{}".format(logits_topic_infer))
 
     if not self._should_trigger:
       return None
