@@ -114,7 +114,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         "position_embeddings.combiner_fn": "tensorflow.add",
         "max_decode_length": 49,
         "nout_embed": 256,
-        "topic_model_path":"",
+        ###"topic_model_path":"",
     }
  
   @property
@@ -239,7 +239,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     features=[]
     emb_size=0
     topic_word_num=200
-    f = open(self.params["topic_model"],"r")
+    ###f = open(self.params["topic_model.path"],"r")
+    f = open("./data/giga_lda_model0716","r")
     texts = f.readlines()
     for line in texts: 
         emb_size=len(line.split('\t')[1].split(' '))
@@ -389,7 +390,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     features=[]
     emb_size=0
     topic_word_num=200
-    f = open(self.params["topic_model"],"r")
+    ###f = open(self.params["topic_model.path"],"r")
+    f = open("./data/giga_lda_model0716","r")
     texts = f.readlines()
     for line in texts: 
         emb_size=len(line.split('\t')[1].split(' '))

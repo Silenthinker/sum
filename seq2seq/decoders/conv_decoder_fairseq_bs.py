@@ -124,7 +124,7 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
         "position_embeddings.combiner_fn": "tensorflow.add",
         "max_decode_length": 49,
         "nout_embed": 256,
-        "topic_model":"",
+        ###"topic_model.path":"",
     }
  
   @property
@@ -274,7 +274,8 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
     features=[]
     emb_size=0
     topic_word_num=200
-    f = open(self.params["topic_model"],"r")
+    ###f = open(self.params["topic_model.path"],"r")
+    f = open("./data/giga_lda_model0716","r")
     texts = f.readlines()
     for line in texts: 
         emb_size=len(line.split('\t')[1].split(' '))
@@ -310,17 +311,18 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
     topic_word_location = tf.expand_dims(topic_word_location, 0)
     batch_size = self.config.beam_width##########################
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
-    
-    graph_utils.add_dict_to_collection({
-      "logits_message_infer": logits_message, 
-      "logits_topic_infer": logits_topic
-      }, "logits_infer")
         
     ###logits_message = tf.nn.softmax(logits_message)
     ###logits_topic = tf.nn.softmax(logits_topic)
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
             
+    graph_utils.add_dict_to_collection({
+      "logits_message_infer": logits_message, 
+      "logits_topic_infer": logits_topic,
+      "logits":logits
+      }, "logits_infer")
+    
     ###shape = next_layer.get_shape().as_list()
     ###logits = tf.reshape(next_layer, [-1,shape[-1]])   
     return logits
@@ -424,7 +426,8 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
     features=[]
     emb_size=0
     topic_word_num=200
-    f = open(self.params["topic_model"],"r")
+    ###f = open(self.params["topic_model.path"],"r")
+    f = open("./data/giga_lda_model0716","r")
     texts = f.readlines()
     for line in texts: 
         emb_size=len(line.split('\t')[1].split(' '))

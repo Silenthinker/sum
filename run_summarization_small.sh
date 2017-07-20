@@ -9,7 +9,7 @@ export DEV_SOURCES=${DATA_PATH}/valid.tok.clean.art
 export DEV_TARGETS=${DATA_PATH}/valid.tok.clean.sum
 export TEST_SOURCES=${DATA_PATH}/test.tok.clean.art
 export TEST_TARGETS=${DATA_PATH}/test.tok.clean.sum
-export TOPIC_MODEL=${DATA_PATH}/giga_lda_model0716
+export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716
 
 export TRAIN_STEPS=100000
 
