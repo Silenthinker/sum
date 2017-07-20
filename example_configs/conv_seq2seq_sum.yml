@@ -21,3 +21,4 @@ model_params:
   source.max_seq_len: 200
   source.reverse: false
   target.max_seq_len: 30
+  topic_model_path: "giga_lda_model0716"
