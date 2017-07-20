@@ -524,6 +524,7 @@ class TrainUpdateLoss(TrainingHook):
         self._train_dict["norms"]: norms,
         self._train_dict["log_prob_sum_"]: log_prob_sum
         }
+
       sum_loss, loss_rl = self._session.run(loss_fetches, feed_dict)
 
       fetch = [
@@ -545,4 +546,3 @@ class TrainUpdateLoss(TrainingHook):
             file.write(log_outputs + "\n")
         self._timer.update_last_triggered_step(self._iter_count - 1)
 
-      

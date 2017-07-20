@@ -220,8 +220,6 @@ def create_experiment(output_dir):
 def main(_argv):
   """The entrypoint for the script"""
 
-  os.environ["CUDA_VISIBLE_DEVICES"]= "4,5,6,7"
-
   # Parse YAML FLAGS
   FLAGS.hooks = _maybe_load_yaml(FLAGS.hooks)
   FLAGS.metrics = _maybe_load_yaml(FLAGS.metrics)
@@ -240,14 +238,14 @@ def main(_argv):
       tf.logging.info("Loading config from %s", config_path)
       with gfile.GFile(config_path.strip()) as config_file:
         config_flags = yaml.load(config_file)
-        final_config = _deep_merge_dict(final_config, config_flags)
+        final_config = _deep_merge_dict(final_config, config_flags)  ###merge the flags and values from all the files into a dict
 
-  tf.logging.info("Final Config:\n%s", yaml.dump(final_config))
+  tf.logging.info("Final Config:\n%s", yaml.dump(final_config))   ###print the flags and values read from all the files
 
   # Merge flags with config values
-  for flag_key, flag_value in final_config.items():
+  for flag_key, flag_value in final_config.items():   ###map the flags and values to FLAGS in the code
     if hasattr(FLAGS, flag_key) and isinstance(getattr(FLAGS, flag_key), dict):
-      merged_value = _deep_merge_dict(flag_value, getattr(FLAGS, flag_key))
+      merged_value = _deep_merge_dict(flag_value, getattr(FLAGS, flag_key))  ###merge the values has been defined and the new values from the config files
       setattr(FLAGS, flag_key, merged_value)
     elif hasattr(FLAGS, flag_key):
       setattr(FLAGS, flag_key, flag_value)
@@ -261,7 +259,7 @@ def main(_argv):
                     FLAGS.save_checkpoints_secs)
 
   if not FLAGS.output_dir:
-    FLAGS.output_dir = tempfile.mkdtemp()
+    FLAGS.output_dir = tempfile.mkdtemp()  ###creat temporary files
 
   if not FLAGS.input_pipeline_train:
     raise ValueError("You must specify input_pipeline_train")
