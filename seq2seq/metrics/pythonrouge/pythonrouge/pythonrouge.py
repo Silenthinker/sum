@@ -88,14 +88,20 @@ class Pythonrouge:
                 path = os.path.join(summary_path, "{}.txt".format(i))
                 f = open(path, "w")
                 for sent in doc:
-                    f.write("{}\n".format(sent))
+                    try:
+                        f.write("{}\n".format(sent))
+                    except UnicodeEncodeError:
+                        print(sent)
                 f.close()
             for j, ref in enumerate(reference):
                 for k, doc in enumerate(ref):
                     path = os.path.join(reference_path, "{}_{}.txt".format(j, k))
                     f = open(path, "w")
                     for sent in doc:
-                        f.write("{}\n".format(sent))
+                        try:
+                            f.write("{}\n".format(sent))
+                        except UnicodeEncodeError:
+                            print(sent)
                     f.close()
         if delete:
             xml_path = os.path.join(temp_dir, "setting.xml")

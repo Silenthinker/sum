@@ -516,8 +516,7 @@ class TrainUpdateLoss(TrainingHook):
 
       loss_fetches = [
         self._train_dict["sum_loss"],
-        self._train_dict["loss_rl"],
-        self._pred_dict["labels.target_tokens"],
+        self._train_dict["loss_rl"]
       ]
       feed_dict = {
         self._train_dict["rewards"]: r,
@@ -525,13 +524,13 @@ class TrainUpdateLoss(TrainingHook):
         self._train_dict["norms"]: norms,
         self._train_dict["log_prob_sum_"]: log_prob_sum
         }
-      sum_loss, loss_rl, ref_mid = self._session.run(loss_fetches, feed_dict)
+
+      sum_loss, loss_rl = self._session.run(loss_fetches, feed_dict)
 
       fetch = [
         self._train_dict["train_op_rl"],
         ]
         
-      ref_new = self._session.run([self._pred_dict["labels.target_tokens"]])
       loss_rl = self._session.run(fetch, feed_dict)
       r_mean = sum(r)*1./len(r)
       b_mean = sum(b)*1./len(b)
@@ -547,4 +546,3 @@ class TrainUpdateLoss(TrainingHook):
             file.write(log_outputs + "\n")
         self._timer.update_last_triggered_step(self._iter_count - 1)
 
-      

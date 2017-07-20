@@ -23,6 +23,7 @@ from __future__ import unicode_literals
 
 from pydoc import locate
 
+import os
 import yaml
 from six import string_types
 
@@ -59,7 +60,7 @@ FLAGS = tf.flags.FLAGS
 def main(_argv):
   """Program entry point.
   """
-
+  os.environ["CUDA_VISIBLE_DEVICES"]= "6,7"
   # Load flags from config file
   if FLAGS.config_path:
     with gfile.GFile(FLAGS.config_path) as config_file:

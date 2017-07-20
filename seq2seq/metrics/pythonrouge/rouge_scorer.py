@@ -41,7 +41,7 @@ def evaluate(reference, summary, files=False):
 
 
   # setting rouge options
-  rouge = Pythonrouge(n_gram=2, ROUGE_SU4=True, ROUGE_L=True, stemming=True, stopwords=True, word_level=True, length_limit=True, length=50, use_cf=False, cf=95, scoring_formula="average", resampling=False, samples=1000, favor=True, p=0.5)
+  rouge = Pythonrouge(n_gram=2, ROUGE_SU4=True, ROUGE_L=True, stemming=False, stopwords=False, word_level=True, length_limit=True, length=50, use_cf=False, cf=95, scoring_formula="average", resampling=False, samples=1000, favor=True, p=0.5)
   if files:
     setting_file = rouge.setting(files=True, summary_path=summary, reference_path=reference)  
   else:
