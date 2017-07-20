@@ -21,4 +21,5 @@ model_params:
   source.max_seq_len: 200
   source.reverse: false
   target.max_seq_len: 30
+  is_topic: 0
   ###topic_model.path: "/nlp/lilianwang/conv_seq2seq_master/data/giga_lda_model0716"

@@ -1,5 +1,5 @@
 export PYTHONIOENCODING=UTF-8
-export DATA_PATH="$(pwd)/data/giga_small"
+export DATA_PATH="$(pwd)/data/giga_small_small"
 
 export VOCAB_SOURCE=${DATA_PATH}/vocab.50k.art
 export VOCAB_TARGET=${DATA_PATH}/vocab.50k.sum
@@ -18,7 +18,7 @@ mkdir -p $MODEL_DIR
 
 python -m bin.train \
   --config_paths="
-      ./example_configs/conv_seq2seq_sum.yml,
+      ./example_configs/conv_seq2seq_topic.yml,
       ./example_configs/train_seq2seq_sum.yml,
       ./example_configs/text_metrics_bpe.yml" \
   --model_params "
@@ -39,7 +39,7 @@ python -m bin.train \
         - $DEV_SOURCES
        target_files:
         - $DEV_TARGETS" \
-  --batch_size 64 \
-  --eval_every_n_steps 5000 \
+  --batch_size 32 \
+  --eval_every_n_steps 10000 \
   --train_steps $TRAIN_STEPS \
   --output_dir $MODEL_DIR

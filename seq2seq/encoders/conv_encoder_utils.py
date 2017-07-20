@@ -177,95 +177,29 @@ def conv_decoder_stack(target_embed, enc_output, inputs, nhids_list, kwidths_lis
     # add attention
     # decoder output -->linear mapping to embed, + target embed,  query decoder output a, softmax --> scores, scores*encoder_output_c-->output,  output--> linear mapping to nhid+  decoder_output -->
     att_out = make_attention(target_embed, enc_output, next_layer, layer_idx) 
-    
-    ######
-    att_out_size = att_out.get_shape().as_list()[-1]      #k
-    ###print("att_out length:"+str(att_out.get_shape()))
-    ###print("att_out_size:"+str(att_out_size))
-    att_out_message, att_out_topic = tf.split(att_out,[tf.cast(att_out_size/2,tf.int64),tf.cast(att_out_size/2,tf.int64)],2)    
-
-    ######message    
-    next_layer_message = (next_layer + att_out_message) * tf.sqrt(0.5) 
+    next_layer = (next_layer + att_out) * tf.sqrt(0.5) 
 
     # add res connections
-    next_layer_message += (next_layer_message + res_inputs) * tf.sqrt(0.5) 
-
-    ######topic
-    ###embed_size = target_embed.get_shape().as_list()[-1]
-    ###encoder_output_a_message, encoder_output_a_topic = tf.split(enc_output.outputs,[embed_size,embed_size],2) ######
-    ###enc_output_hidden_state=linear_mapping_weightnorm(encoder_output_a_message, next_layer.get_shape().as_list()[-1], var_scope_name="linear_mapping_enc_output_addto_before_softmax")
-    next_layer_topic = (next_layer + att_out_topic + att_out_message) * tf.sqrt(0.5)       #########reinforce the message information
-
-    # add res connections
-    ###########next_layer_topic += (next_layer_topic + res_inputs) * tf.sqrt(0.5) ##########
-    next_layer_topic = (next_layer_topic + res_inputs) * tf.sqrt(0.5)
-    
-    
-    next_layer_output = tf.concat([next_layer_message,next_layer_topic],2)
-  ###return next_layer
-  return next_layer_output
+    next_layer += (next_layer + res_inputs) * tf.sqrt(0.5) 
+  return next_layer
 
  
 def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
   with tf.variable_scope("attention_layer_" + str(layer_idx)):
     embed_size = target_embed.get_shape().as_list()[-1]      #k
-    ###print("target_embed_size:"+str(embed_size))
     dec_hidden_proj = linear_mapping_weightnorm(decoder_hidden, embed_size, var_scope_name="linear_mapping_att_query")  # M*N1*k1 --> M*N1*k
-    dec_rep = (dec_hidden_proj + target_embed) * tf.sqrt(0.5)   ########highway?
+    dec_rep = (dec_hidden_proj + target_embed) * tf.sqrt(0.5)
  
-    ###encoder_output_a = encoder_output.outputs
-    ###encoder_output_c = encoder_output.attention_values    # M*N2*K
-    ###print("encoder_output.attention_values length[0]:"+str(tf.shape(encoder_output.attention_values)[0])+" encoder_output.attention_values length[1]:"+str(tf.shape(encoder_output.attention_values)[1]))
-
-    encoder_output_a_message, encoder_output_a_topic = tf.split(encoder_output.outputs,[embed_size,embed_size],2) ######
-    encoder_output_c_message, encoder_output_c_topic = tf.split(encoder_output.attention_values,[embed_size,embed_size],2)  ######
-    #######print("encoder_output_a_message length[0]:"+str(encoder_output_a_message.get_shape().as_list()[0])+" encoder_output_a_message:"+str(encoder_output_a_message.get_shape().as_list()[1])) 
-    
-    ###### 
-    att_score_message_0 = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
-    att_score_message = tf.nn.softmax(att_score_message_0)        
+    encoder_output_a = encoder_output.outputs
+    encoder_output_c = encoder_output.attention_values    # M*N2*K
+     
+    att_score = tf.matmul(dec_rep, encoder_output_a, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
+    att_score = tf.nn.softmax(att_score)        
   
-    length_message = tf.cast(tf.shape(encoder_output_c_message), tf.float32)
-
-    att_out_message = tf.matmul(att_score_message, encoder_output_c_message) * length_message[1] * tf.sqrt(1.0/length_message[1])    #M*N1*N2  ** M*N2*K   --> M*N1*k     
-
-    att_out_message = linear_mapping_weightnorm(att_out_message, decoder_hidden.get_shape().as_list()[-1], var_scope_name="linear_mapping_att_out_message")
-    ######
-
-    att_score_topic = tf.matmul(dec_rep, encoder_output_a_topic, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
-    """it's the idea of RNN style, but maybe not work in CNN. here have a problem, the dynamic size of encoder_output_a_message
-    ##embed_size = target_embed.get_shape().as_list()[-1]
-    ##encoder_output_a_message, encoder_output_a_topic = tf.split(encoder_output.outputs,[embed_size,embed_size],2) ######
-    ###############print("encoder_output_a_message.get_shape().as_list()[-1]:"+str(encoder_output_a_message.get_shape().as_list()[-1]))
-    enc_output_hidden_state=linear_mapping_weightnorm(encoder_output_a_message, att_score_topic.get_shape().as_list()[-1], var_scope_name="linear_mapping_enc_output_addto_topic_attention")
-    att_score_topic = att_score_topic + enc_output_hidden_state
-    """
-    ###att_score_topic = tf.nn.softmax(att_score_topic)################
-    ##att_score_message = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)
-    att_score_topic = tf.nn.softmax(att_score_topic+att_score_message_0) ###try this style   
-  
-    length_topic = tf.cast(tf.shape(encoder_output_c_topic), tf.float32)
-
-    att_out_topic = tf.matmul(att_score_topic, encoder_output_c_topic) * length_topic[1] * tf.sqrt(1.0/length_topic[1])    #M*N1*N2  ** M*N2*K   --> M*N1*k     
-
-    att_out_topic = linear_mapping_weightnorm(att_out_topic, decoder_hidden.get_shape().as_list()[-1], var_scope_name="linear_mapping_att_out_topic")
-    
-    att_out = tf.concat([att_out_message,att_out_topic],2)
-
+    length = tf.cast(tf.shape(encoder_output_c), tf.float32)
+    att_out = tf.matmul(att_score, encoder_output_c) * length[1] * tf.sqrt(1.0/length[1])    #M*N1*N2  ** M*N2*K   --> M*N1*k
+     
+    att_out = linear_mapping_weightnorm(att_out, decoder_hidden.get_shape().as_list()[-1], var_scope_name="linear_mapping_att_out")
   return att_out
 
-def topic_softmax(logits_message,logits_topic):  ###(exp(Vi)+exp(Ki)) / (sum(exp(Vi))+sum(exp(Ki))) , if the word is a topic word in the mean while
-    logits_message_exp = tf.exp(logits_message)
-    logits_topic_exp = tf.exp(logits_topic)
-    
-    logits_exp_sum = tf.concat([logits_message_exp,logits_topic_exp],-1)   ##require sum of the last dim
-    logits_exp_sum = tf.reduce_sum(logits_exp_sum,-1)
-    logits_exp_sum = tf.expand_dims(logits_exp_sum,-1)
-    
-    vocab_size = logits_message_exp.get_shape().as_list()[-1]
-    logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])
-    
-    logits_output = (logits_message_exp + logits_topic_exp)/logits_exp_sum
-    
-    return logits_output
-    
+

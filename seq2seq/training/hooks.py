@@ -228,7 +228,8 @@ class TrainSampleHook(TrainingHook):
   def after_run(self, _run_context, run_values):
     result_dict, step = run_values.results
     self._iter_count = step
-    
+
+    '''    
     source_emb_logits_fetches = [
         self._source_emb["source_message_emb"],
         self._source_emb["source_topic_emb"],
@@ -247,6 +248,7 @@ class TrainSampleHook(TrainingHook):
     ##tf.logging.info("loss:{}".format(loss))
     #tf.logging.info("logits_message_infer:{}".format(logits_message_infer))
     #tf.logging.info("logits_topic_infer:{}".format(logits_topic_infer))
+    '''
 
     if not self._should_trigger:
       return None

@@ -22,8 +22,6 @@ from __future__ import print_function
 
 from pydoc import locate
 
-from seq2seq import graph_utils
-
 import tensorflow as tf
 
 from seq2seq.encoders.encoder import Encoder, EncoderOutput
@@ -91,19 +89,17 @@ class ConvEncoderFairseq(Encoder):
     return positions_embed
    
 
-  def encode(self, inputs, sequence_length, source_topic_emb): ######
+
+  def encode(self, inputs, sequence_length):
     
     embed_size = inputs.get_shape().as_list()[-1]
-    topic_embed_size = source_topic_emb.get_shape().as_list()[-1]#####
     
     if self.params["position_embeddings.enable"]:
       positions_embed = self._create_position_embedding(
           lengths=sequence_length,  # tensor, data lengths
           maxlen=tf.shape(inputs)[1])  # max len in this batch
-      inputs = self._combiner_fn(inputs, positions_embed)    ###(128,39,256)
-      
-    conv_enc_dict = {"encoder inputs":inputs,"source_topic_emb":source_topic_emb}
-    graph_utils.add_dict_to_collection(conv_enc_dict,"conv_enc_dict")  
+      inputs = self._combiner_fn(inputs, positions_embed)
+    
     
     # Apply dropout to embeddings
     inputs = tf.contrib.layers.dropout(
@@ -118,44 +114,19 @@ class ConvEncoderFairseq(Encoder):
         kwidths_list = parse_list_or_default(self.params["cnn.kwidths"], self.params["cnn.layers"], self.params["cnn.kwidth_default"])
         
         # mapping emb dim to hid dim
-        next_layer = linear_mapping_weightnorm(next_layer, nhids_list[0], dropout=self.params["embedding_dropout_keep_prob"], var_scope_name="linear_mapping_before_cnn_message")      
+        next_layer = linear_mapping_weightnorm(next_layer, nhids_list[0], dropout=self.params["embedding_dropout_keep_prob"], var_scope_name="linear_mapping_before_cnn")      
         next_layer = conv_encoder_stack(next_layer, nhids_list, kwidths_list, {'src':self.params["embedding_dropout_keep_prob"], 'hid': self.params["nhid_dropout_keep_prob"]}, mode=self.mode)
         
-        next_layer = linear_mapping_weightnorm(next_layer, embed_size, var_scope_name="linear_mapping_after_cnn_message")
+        next_layer = linear_mapping_weightnorm(next_layer, embed_size, var_scope_name="linear_mapping_after_cnn")
       ## The encoder stack will receive gradients *twice* for each attention pass: dot product and weighted sum.
       ##cnn = nn.GradMultiply(cnn, 1 / (2 * nattn))  
       cnn_c_output = (next_layer + inputs) * tf.sqrt(0.5) 
             
 
     final_state = tf.reduce_mean(cnn_c_output, 1)
-    
-    #####for topic embedding
-    # Apply dropout to embeddings
-    source_topic_emb = tf.contrib.layers.dropout(
-        inputs=source_topic_emb,
-        keep_prob=self.params["embedding_dropout_keep_prob"],
-        is_training=self.mode == tf.contrib.learn.ModeKeys.TRAIN)
-    
-    with tf.variable_scope("encoder_topic_cnn"):    
-      next_layer_topic = source_topic_emb
-      if self.params["cnn.layers"] > 0:
-        nhids_list = parse_list_or_default(self.params["cnn.nhids"], self.params["cnn.layers"], self.params["cnn.nhid_default"])
-        kwidths_list = parse_list_or_default(self.params["cnn.kwidths"], self.params["cnn.layers"], self.params["cnn.kwidth_default"])
-        
-        # mapping emb dim to hid dim
-        next_layer_topic = linear_mapping_weightnorm(next_layer_topic, nhids_list[0], dropout=self.params["embedding_dropout_keep_prob"], var_scope_name="linear_mapping_before_cnn_topic")      
-        next_layer_topic = conv_encoder_stack(next_layer_topic, nhids_list, kwidths_list, {'src':self.params["embedding_dropout_keep_prob"], 'hid': self.params["nhid_dropout_keep_prob"]}, mode=self.mode)
-        
-        next_layer_topic = linear_mapping_weightnorm(next_layer_topic, topic_embed_size, var_scope_name="linear_mapping_after_cnn_topic")
-      ## The encoder stack will receive gradients *twice* for each attention pass: dot product and weighted sum.
-      ##cnn = nn.GradMultiply(cnn, 1 / (2 * nattn))  
-      cnn_c_output_topic = (next_layer_topic + source_topic_emb) * tf.sqrt(0.5) 
-            
 
-    final_state_topic = tf.reduce_mean(cnn_c_output_topic, 1)
-
-    return EncoderOutput( ######
-        outputs=tf.concat([next_layer,next_layer_topic],2),
-        final_state=tf.concat([final_state,final_state_topic],1),
-        attention_values=tf.concat([cnn_c_output,cnn_c_output_topic],2),
+    return EncoderOutput(
+        outputs=next_layer,
+        final_state=final_state,
+        attention_values=cnn_c_output,
         attention_values_length=sequence_length)
