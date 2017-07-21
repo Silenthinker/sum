@@ -11,9 +11,10 @@ export TEST_SOURCES=${DATA_PATH}/test.tok.clean.art
 export TEST_TARGETS=${DATA_PATH}/test.tok.clean.sum
 export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716
 
+
 export TRAIN_STEPS=100000
 
-export MODEL_DIR="$(pwd)/sum_conv_seq2seq_topic2"
+export MODEL_DIR="$(pwd)/sum_conv_seq2seq2"
 mkdir -p $MODEL_DIR
 
 python -m bin.train \
@@ -40,6 +41,6 @@ python -m bin.train \
        target_files:
         - $DEV_TARGETS" \
   --batch_size 32 \
-  --eval_every_n_steps 10000 \
+  --eval_every_n_steps 500 \
   --train_steps $TRAIN_STEPS \
   --output_dir $MODEL_DIR
