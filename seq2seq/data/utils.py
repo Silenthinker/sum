@@ -32,6 +32,8 @@ def decode_tokens_for_blue(tokens, delimiter):
       else:
         word = tokens[i, t].decode("utf-8")
       if word == 'SEQUENCE_END':
+        words.append(word)
+        mask.append(1)
         break
       if word != '':
         words.append(word)

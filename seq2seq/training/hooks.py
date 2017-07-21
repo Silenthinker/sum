@@ -36,6 +36,10 @@ from tensorflow import gfile
 
 from seq2seq.configurable import Configurable, abstractstaticmethod
 from seq2seq import graph_utils, global_vars
+from seq2seq.data import utils
+
+# from seq2seq.metrics import score
+from seq2seq.metrics.pythonrouge import rouge_scorer
 
 FLAGS = tf.flags.FLAGS
 
@@ -50,6 +54,7 @@ class TrainingHook(tf.train.SessionRunHook, Configurable):
     Configurable.__init__(self, params, tf.contrib.learn.ModeKeys.TRAIN)
     self._model_dir = model_dir
     self._run_config = run_config
+    self._session = None
 
   @property
   def model_dir(self):
@@ -166,6 +171,7 @@ class TrainSampleHook(TrainingHook):
     self._global_step = None
     self._source_delimiter = self.params["source_delimiter"]
     self._target_delimiter = self.params["target_delimiter"]
+    self._is_rl = True
 
   @staticmethod
   def default_params():
@@ -179,11 +185,21 @@ class TrainSampleHook(TrainingHook):
   def begin(self):
     self._iter_count = 0
     self._global_step = tf.train.get_global_step()
+    '''
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
     self._source_emb = graph_utils.get_dict_from_collection("source_emb")
     self._logits = graph_utils.get_dict_from_collection("logits")
     ##self._logits_infer = graph_utils.get_dict_from_collection("logits_infer")
     self._loss = graph_utils.get_dict_from_collection("loss")
+    '''
+    if "train_op_rl" in graph_utils.get_dict_from_collection("train").keys():
+      self._is_rl = True
+      self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
+      self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
+    else:
+      self._is_rl = False
+    self._pred_dict = graph_utils.get_dict_from_collection("predictions_train")
+    
     # Create the sample directory
     if self._sample_dir is not None:
       gfile.MakeDirs(self._sample_dir)
@@ -217,12 +233,23 @@ class TrainSampleHook(TrainingHook):
   def before_run(self, _run_context):
     self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
     if self._should_trigger:
-      fetches = {
-          "predicted_tokens": self._pred_dict["predicted_tokens"],
-          "target_words": self._pred_dict["labels.target_tokens"],
-          "target_len": self._pred_dict["labels.target_len"]
-      }
-      return tf.train.SessionRunArgs([fetches, self._global_step])
+      if self._is_rl:
+        fetches = {
+            "predicted_tokens": self._pred_dict["predicted_tokens"],
+            "predicted_tokens_greedy": self._pred_dict_greedy["predicted_tokens"],
+            "predicted_tokens_sampled": self._pred_dict_sampled["predicted_tokens"],
+            "target_words": self._pred_dict["labels.target_tokens"],
+            "target_len": self._pred_dict["labels.target_len"]
+        }
+      else:
+        fetches = {
+            "predicted_tokens": self._pred_dict["predicted_tokens"],
+            "target_words": self._pred_dict["labels.target_tokens"],
+            "target_len": self._pred_dict["labels.target_len"]
+        }
+      sessRunArgs = tf.train.SessionRunArgs([fetches, self._global_step])
+
+      return sessRunArgs
     return tf.train.SessionRunArgs([{}, self._global_step])
 
   def after_run(self, _run_context, run_values):
@@ -252,24 +279,43 @@ class TrainSampleHook(TrainingHook):
 
     if not self._should_trigger:
       return None
-
     # Convert dict of lists to list of dicts
-    result_dicts = [
-        dict(zip(result_dict, t)) for t in zip(*result_dict.values())
-    ]
-
+    result_dicts = utils.convertDict(result_dict)
+    
     # Print results
+    
     result_str = ""
-    result_str += "Prediction followed by Target @ Step {}\n".format(step)
     result_str += ("=" * 100) + "\n"
     for result in result_dicts:
       target_len = result["target_len"]
-      predicted_slice = result["predicted_tokens"][:target_len - 1]
       target_slice = result["target_words"][1:target_len]
-      result_str += self._target_delimiter.encode("utf-8").join(
-          predicted_slice).decode("utf-8") + "\n"
-      result_str += self._target_delimiter.encode("utf-8").join(
-          target_slice).decode("utf-8") + "\n\n"
+
+      predicted_str = utils.decode_tokens_for_blue(result["predicted_tokens"], self._target_delimiter)[1] [0]
+      if self._is_rl:
+        predicted_str_greedy = utils.decode_tokens_for_blue(result["predicted_tokens_greedy"], self._target_delimiter)[1][0]
+        # predicted_str_greedy = self._target_delimiter.encode("utf-8").join(
+        #     predicted_slice_greedy).decode("utf-8")
+        predicted_str_sampled = utils.decode_tokens_for_blue(result["predicted_tokens_sampled"], self._target_delimiter)[1][0]
+        # predicted_str_sampled = self._target_delimiter.encode("utf-8").join(
+        #     predicted_slice_sampled).decode("utf-8")
+
+      result_str += "PREDICTED: " + predicted_str + "\n"
+
+      if self._is_rl:
+        result_str += "GREEDY: " + predicted_str_greedy + "\n"
+        result_str += "SAMPLED: " + predicted_str_sampled + "\n"
+      
+      target_str = self._target_delimiter.encode("utf-8").join(
+          target_slice).decode("utf-8")
+      result_str += "REF: " + target_str + "\n"
+      if self._is_rl:
+        # result_str += "BLEU of pred_greedy: {}\n".format(score.evaluate_captions([[target_str]], [predicted_str_greedy]))
+        # result_str += "BLEU of pred_sampled: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str_sampled]))
+        result_str += "ROUGE of pred_greedy: {}\n".format(rouge_scorer.evaluate([[[target_str]]], [[predicted_str_greedy]]))
+        result_str += "ROUGE of pred_sampled: {}\n\n".format(rouge_scorer.evaluate([[[target_str]]], [[predicted_str_sampled]]))
+      else:
+        # result_str += "BLEU of pred_greedy: {}\n\n".format(score.evaluate_captions([[target_str]], [predicted_str]))
+        result_str += "ROUGE of pred_greedy: {}\n\n".format(rouge_scorer.evaluate([[[target_str]]], [[predicted_str]]))
     result_str += ("=" * 100) + "\n\n"
     tf.logging.info(result_str)
     if self._sample_dir:
@@ -457,3 +503,131 @@ class SyncReplicasOptimizerHook(TrainingHook):
     if self._q_runner is not None:
       self._q_runner.create_threads(
           session, coord=coord, daemon=True, start=True)
+
+class TrainUpdateLoss(TrainingHook):
+  """Update loss to obtain RL loss
+
+  Params:
+    delimiter: Join tokens on this delimiter. Defaults to space.
+  """
+
+  #pylint: disable=missing-docstring
+
+  def __init__(self, params, model_dir, run_config):
+    super(TrainUpdateLoss, self).__init__(params, model_dir, run_config)
+    self._timer = SecondOrStepTimer(
+        every_secs=self.params["every_n_secs"],
+        every_steps=self.params["every_n_steps"])
+    self._log_dir = os.path.join(self.model_dir, "logs")
+    self._should_trigger = False
+    self._pred_dict = {}
+    self._iter_count = 0
+    self._global_step = None
+    self._source_delimiter = self.params["source_delimiter"]
+    self._target_delimiter = self.params["target_delimiter"]
+    self._is_rl = True
+
+  @staticmethod
+  def default_params():
+    return {
+        "source_delimiter": " ",
+        "target_delimiter": " ",
+        "every_n_secs": None,
+        "every_n_steps": 10
+    }
+
+  def begin(self):
+    self._iter_count = 0
+    self._global_step = tf.train.get_global_step()
+    self._pred_dict = graph_utils.get_dict_from_collection("predictions_train")
+    self._pred_dict_greedy = graph_utils.get_dict_from_collection("predictions_greedy")
+    self._pred_dict_sampled = graph_utils.get_dict_from_collection("predictions_sampled")
+    self._train_dict = graph_utils.get_dict_from_collection("train")
+
+    # Create the log directory
+    if self._log_dir is not None:
+      gfile.MakeDirs(self._log_dir)
+
+    if "train_op_rl" in self._train_dict.keys():
+      self._is_rl = True
+    else:
+      self._is_rl = False
+
+  def before_run(self, _run_context):
+    if self._is_rl:
+      fetches = {
+          "target_len": self._pred_dict["labels.target_len"]
+      }
+    else:
+      fetches = {
+          "target_len": self._pred_dict["labels.target_len"]
+      }
+    sessRunArgs = tf.train.SessionRunArgs([fetches, self._global_step])
+
+    return sessRunArgs
+
+  def after_run(self, _run_context, run_values):
+
+    _, step = run_values.results
+    self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
+    self._iter_count = step
+
+    # Get results
+    if self._is_rl:
+      prep_fetches = [
+        self._pred_dict_greedy["predicted_tokens"],
+        self._pred_dict_sampled["predicted_tokens"],
+        self._pred_dict["labels.target_tokens"],
+        self._pred_dict["labels.target_len"],
+        self._train_dict["log_prob_sum"],
+        self._train_dict["loss"],
+      ]
+      predicted_tokens_greedy, predicted_tokens_sampled, target_words, target_len, log_prob_sum, loss = self._session.run(prep_fetches)
+      
+      _, decoded_greedy = utils.decode_tokens_for_blue(predicted_tokens_greedy, self._target_delimiter)
+      masks, decoded_sampled = utils.decode_tokens_for_blue(predicted_tokens_sampled, self._target_delimiter)
+
+      norms = [sum(x) for x in masks]
+      # decode tokens from byte to string and prepare for blue evaluation 
+      _, ref_decoded = utils.decode_tokens_for_blue(target_words[:, 1:], self._target_delimiter)
+      
+      # compute bleu scores for sampled generator and greedy generator
+      # r = [score.evaluate_captions([k], [v])  for k, v in zip(ref_decoded, decoded_sampled)]
+      # b = [score.evaluate_captions([k], [v]) for k, v in zip(ref_decoded, decoded_greedy)]
+      r = [rouge_scorer.evaluate([[[k]]], [[v]])["ROUGE-L"]  for k, v in zip(ref_decoded, decoded_sampled)]
+      b = [rouge_scorer.evaluate([[[k]]], [[v]])["ROUGE-L"] for k, v in zip(ref_decoded, decoded_greedy)]
+      
+      log_prob_mean = np.mean(log_prob_sum)
+
+      loss_fetches = [
+        self._train_dict["sum_loss"],
+        self._train_dict["loss_rl"]
+      ]
+      feed_dict = {
+        self._train_dict["rewards"]: r,
+        self._train_dict["base_line"]: b,
+        self._train_dict["norms"]: norms,
+        self._train_dict["log_prob_sum_"]: log_prob_sum
+        }
+
+      sum_loss, loss_rl = self._session.run(loss_fetches, feed_dict)
+
+      fetch = [
+        self._train_dict["train_op_rl"],
+        ]
+        
+      loss_rl = self._session.run(fetch, feed_dict)
+      r_mean = sum(r)*1./len(r)
+      b_mean = sum(b)*1./len(b)
+      
+      if self._should_trigger:
+        # tf.logging.info("step: {:>5}, sum_loss: {:>7.4f}, loss: {:>7}, loss_rl: {:>7.4f}, r_mean: {:>7.4f}, b_mean: {:>7.4f}, log_prob_mean: {:>7.4f}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean))
+        log_outputs = "step: {}, sum_loss: {}, loss: {}, loss_rl: {}, r_mean: {}, b_mean: {}, log_prob_mean: {}".format(step, sum_loss, loss, loss_rl, r_mean, b_mean, log_prob_mean)
+        tf.logging.info(log_outputs)
+        if self._log_dir:
+          filepath = os.path.join(self._log_dir,
+              "logs.txt")
+          with gfile.GFile(filepath, "a") as file:
+            file.write(log_outputs + "\n")
+        self._timer.update_last_triggered_step(self._iter_count - 1)
+

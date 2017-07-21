@@ -28,6 +28,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import gfile
 
+from seq2seq import graph_utils
 from seq2seq.tasks.inference_task import InferenceTask, unbatch_dict
 
 
@@ -112,6 +113,7 @@ class DecodeText(InferenceTask):
     super(DecodeText, self).__init__(params)
     self._unk_mapping = None
     self._unk_replace_fn = None
+    self._session = None
 
     if self.params["unk_mapping"] is not None:
       self._unk_mapping = _get_unk_mapping(self.params["unk_mapping"])
@@ -136,7 +138,9 @@ class DecodeText(InferenceTask):
         "unk_mapping": None,
     })
     return params
-
+  def after_create_session(self, session, coord):
+    self._session = session
+    
   def before_run(self, _run_context):
     fetches = {}
     fetches["predicted_tokens"] = self._predictions["predicted_tokens"]
@@ -151,6 +155,7 @@ class DecodeText(InferenceTask):
 
   def after_run(self, _run_context, run_values):
     fetches_batch = run_values.results
+
     for fetches in unbatch_dict(fetches_batch):
       # Convert to unicode
       fetches["predicted_tokens"] = np.char.decode(

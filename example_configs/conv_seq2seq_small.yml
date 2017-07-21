@@ -1,0 +1,23 @@
+model: ConvSeq2Seq
+model_params:
+  enable_rl: True
+  embedding.dim: 256
+  encoder.class: seq2seq.encoders.ConvEncoderFairseq
+  encoder.params:
+    cnn.layers: 1
+    cnn.nhids: 256
+    cnn.kwidths: 3
+  decoder.class: seq2seq.decoders.ConvDecoderFairseq
+  decoder.params:
+    cnn.layers: 1
+    cnn.nhids: 256
+    cnn.kwidths: 3
+  optimizer.name: Adam
+  optimizer.params:
+    beta1: 0.9
+    beta2: 0.999
+  optimizer.learning_rate: 0.25
+  optimizer.clip_gradients: 0.1
+  source.max_seq_len: 50
+  source.reverse: false
+  target.max_seq_len: 50

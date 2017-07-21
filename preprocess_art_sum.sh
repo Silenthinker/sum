@@ -46,18 +46,18 @@ for f in ${OUTPUT_DIR}/*.art; do
   ${OUTPUT_DIR}/mosesdecoder/scripts/training/clean-corpus-n.perl $fbase 'sum' 'art' "${fbase}.clean" 1 80
 done
 
-# Create character vocabulary (on original data)
+
+# Create vocabulary for non-tokenized art data
 $BASE_DIR/bin/tools/generate_vocab.py \
    --max_vocab_size 50000 \
   < ${OUTPUT_DIR}/train.art \
   > ${OUTPUT_DIR}/vocab.50k.art \
 
-# Create vocabulary for sum data
+# Create vocabulary for non-tokenized sum data
 $BASE_DIR/bin/tools/generate_vocab.py \
   --max_vocab_size 50000 \
   < ${OUTPUT_DIR}/train.sum \
   > ${OUTPUT_DIR}/vocab.50k.sum \
-
 
 # Create character vocabulary (on tokenized data)
 ${BASE_DIR}/bin/tools/generate_vocab.py --delimiter "" \

@@ -4,7 +4,6 @@ default_params: &default_params
 
 metrics:
   - class: LogPerplexityMetricSpec
-
   - class: RougeMetricSpec
     params:
       <<: *default_params
@@ -33,3 +32,4 @@ metrics:
     params:
       <<: *default_params
       rouge_type: rouge_l/f_score
+
