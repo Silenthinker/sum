@@ -306,7 +306,7 @@ class Seq2SeqModel(ModelBase):
 
   def _build(self, features, labels, params):
     if self.mode != tf.contrib.learn.ModeKeys.INFER:
-      is_rl = params["rl"]
+      is_rl = params["enable_rl"]
     # Pre-process features and labels
     features, labels = self._preprocess(features, labels)
     # Obtain encoder output
@@ -358,7 +358,7 @@ class Seq2SeqModel(ModelBase):
           tf.multiply(
             log_prob_sum_, diff)
           ) / norm # x * y element-wise, give [T, B] log_prob_sum
-        lbd = 0.99
+        lbd = params["lbd"]
         loss_rl = lbd * sum_loss + (1 - lbd) * loss
       else:
         losses, loss = self.compute_loss(decoder_outputs["outputs"], features, labels)

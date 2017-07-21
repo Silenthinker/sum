@@ -1,6 +1,7 @@
 model: ConvSeq2Seq
 model_params:
-  rl: True
+  enable_rl: False
+  lbd: 0.99
   embedding.dim: 256
   encoder.class: seq2seq.encoders.ConvEncoderFairseq
   encoder.params:
