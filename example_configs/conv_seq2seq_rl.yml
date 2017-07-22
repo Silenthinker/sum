@@ -1,6 +1,6 @@
 model: ConvSeq2Seq
 model_params:
-  enable_rl: False
+  enable_rl: True
   enable_topic: False
   lbd: 0.99
   embedding.dim: 256
