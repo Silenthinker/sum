@@ -421,10 +421,13 @@ class Seq2SeqModel(ModelBase):
     # Pre-process features and labels
 
     ###features, labels = self._preprocess(features, labels)
+    features, labels = self._preprocess_add_topics(features, labels)###
+    """
     if self.enable_topic:
       features, labels = self._preprocess_add_topics(features, labels)###
     else:
-    features, labels = self._preprocess(features, labels)
+      features, labels = self._preprocess(features, labels)
+    """
     # Obtain encoder output
 
     encoder_output = self.encode(features, labels)

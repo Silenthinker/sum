@@ -86,7 +86,7 @@ class ConvSeq2Seq(Seq2SeqModel):
         "optimizer.clip_embed_gradients": 5,
         "optimizer.sync_replicas": 0,
         "optimizer.sync_replicas_to_aggregate": 0,
-        "is_topic": 1,
+        "enable_topic": False,
         
 })
     return params
@@ -181,7 +181,7 @@ class ConvSeq2Seq(Seq2SeqModel):
       }, "source_emb")
     
     encoder_fn = self.encoder_class(self.params["encoder.params"], self.mode, self.source_pos_embedding_fairseq())
-    if self.params["is_topic"] == 1:
+    if self.params["enable_topic"]:
         return encoder_fn(source_embedded, features["source_len"], source_topic_emb)
     else:
         return encoder_fn(source_embedded, features["source_len"])
