@@ -294,6 +294,10 @@ class Seq2SeqModel(ModelBase):
     # Create vocabulary look for target
     target_vocab_to_id, target_id_to_vocab, target_word_to_count, vocab_topic_emb_tensor2, _ = \
       vocab.create_vocabulary_lookup_table_add_topics(self.target_vocab_info.path,self.params["topic_model"])
+      
+    topic_words_tensor = graph_utils.get_dict_from_collection("topic_words_tensor")["topic_words_tensor"]
+    topic_words_id_tensor = target_vocab_to_id.lookup(topic_words_tensor)
+    tf.logging.info("topic_words_id_tensor:{}".format(topic_words_id_tensor))
 
     # Add vocab tables to graph colection so that we can access them in
     # other places.
@@ -303,7 +307,8 @@ class Seq2SeqModel(ModelBase):
         "source_word_to_count": source_word_to_count,
         "target_vocab_to_id": target_vocab_to_id,
         "target_id_to_vocab": target_id_to_vocab,
-        "target_word_to_count": target_word_to_count
+        "target_word_to_count": target_word_to_count,
+        "topic_words_id_tensor": topic_words_id_tensor
         ###"source_to_topicEmbedding_table": source_to_topicEmbedding_table
     }, "vocab_tables")
 

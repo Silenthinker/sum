@@ -229,17 +229,18 @@ class TrainSampleHook(TrainingHook):
     result_dict, step = run_values.results
     self._iter_count = step
 
-    '''    
+        
     source_emb_logits_fetches = [
         self._source_emb["source_message_emb"],
         self._source_emb["source_topic_emb"],
         self._logits["logits_message"],
         self._logits["logits_topic"],
+        self._logits["topic_word_location"],
         #self._logits_infer["logits_message_infer"],
         #self._logits_infer["logits_topic_infer"],
         self._loss["loss"]
       ]
-    source_message_emb, source_topic_emb, logits_message, logits_topic, loss = self._session.run(source_emb_logits_fetches)
+    source_message_emb, source_topic_emb, logits_message, logits_topic, topic_word_location, loss = self._session.run(source_emb_logits_fetches)
     ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
     ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
     if step%500 == 0:
@@ -248,7 +249,8 @@ class TrainSampleHook(TrainingHook):
     ##tf.logging.info("loss:{}".format(loss))
     #tf.logging.info("logits_message_infer:{}".format(logits_message_infer))
     #tf.logging.info("logits_topic_infer:{}".format(logits_topic_infer))
-    '''
+    #tf.logging.info("topic_word_location:{}".format(topic_word_location))
+    
 
     if not self._should_trigger:
       return None

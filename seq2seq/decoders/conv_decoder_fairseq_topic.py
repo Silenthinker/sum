@@ -235,33 +235,8 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     next_layer_size = next_layer.get_shape().as_list()[-1]
     next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
       
-    ##############load topic words
-    words=[]
-    features=[]
-    emb_size=0
-    topic_word_num=200
-    ###f = open(self.params["topic_model.path"],"r")
-    f = open("./data/giga_lda_model0716","r")
-    texts = f.readlines()
-    for line in texts: 
-        emb_size=len(line.split('\t')[1].split(' '))
-        words.append(line.split('\t')[0])
-        features.append([float(probability) for probability in line.split('\t')[1].split(' ')[0:emb_size]])
-    f.close()    
-    samples_size = len(words)    
-    topic_words=[]
-    for i in range(0,emb_size):
-        pro_dict={}
-        for j in range(0,samples_size):
-            pro_dict[words[j]]=features[j][i]
-        prob_list = sorted(pro_dict.items(),key=lambda d:d[1],reverse=True)
-        topic_words = topic_words + [item[0] for item in prob_list[0:topic_word_num]]
-    topic_words = list(set(topic_words))
-
-    topic_words_tensor = tf.constant(topic_words,dtype=tf.string)    
-
-    source_vocab_to_id = graph_utils.get_dict_from_collection("vocab_tables")["target_vocab_to_id"]
-    topic_words_id_tensor = source_vocab_to_id.lookup(topic_words_tensor)
+    ##############load topic words   
+    topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]
        
     ###logits_message = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
     ###logits_topic = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
@@ -280,7 +255,8 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     
     graph_utils.add_dict_to_collection({
       "logits_message_infer": logits_message, 
-      "logits_topic_infer": logits_topic
+      "logits_topic_infer": logits_topic,
+      "topic_word_location": topic_word_location
       }, "logits_infer")
         
     ###logits_message = tf.nn.softmax(logits_message)
@@ -290,7 +266,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
             
     ###shape = next_layer.get_shape().as_list()
     ###logits = tf.reshape(next_layer, [-1,shape[-1]])   
-    return logits
+    return logits_message
 
   def conv_block(self, enc_output, input_embed, is_train=True):
     with tf.variable_scope("decoder_cnn"):    
@@ -384,37 +360,9 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     ######   
     next_layer_size = next_layer.get_shape().as_list()[-1]
     next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
-    
-    
-    ##############load topic words
-    words=[]
-    features=[]
-    emb_size=0
-    topic_word_num=200
-    ###f = open(self.params["topic_model.path"],"r")
-    f = open("./data/giga_lda_model0716","r")
-    texts = f.readlines()
-    for line in texts: 
-        emb_size=len(line.split('\t')[1].split(' '))
-        words.append(line.split('\t')[0])
-        features.append([float(probability) for probability in line.split('\t')[1].split(' ')[0:emb_size]])
-    f.close()    
-    samples_size = len(words)    
-    topic_words=[]
-    for i in range(0,emb_size):
-        pro_dict={}
-        for j in range(0,samples_size):
-            pro_dict[words[j]]=features[j][i]
-        prob_list = sorted(pro_dict.items(),key=lambda d:d[1],reverse=True)
-        topic_words = topic_words + [item[0] for item in prob_list[0:topic_word_num]]
-    topic_words = list(set(topic_words))
-    ###topic_words_tensor = tf.convert_to_tensor(topic_words,dtype=tf.string)
-    topic_words_tensor = tf.constant(topic_words,dtype=tf.string)
-     
-    ########topic_words_tensor = graph_utils.get_dict_from_collection("topic_words")["topic_words"]  
-    ###source_vocab_to_id = graph_utils.get_dict_from_collection("vocab_tables")["source_vocab_to_id"]
-    source_vocab_to_id = graph_utils.get_dict_from_collection("vocab_tables")["target_vocab_to_id"]
-    topic_words_id_tensor = source_vocab_to_id.lookup(topic_words_tensor)
+        
+    ##############load topic words' id tensor
+    topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]
        
     #####logits = _transpose_batch_time(next_layer)    ###logits:(13, 128, 31114)   # [T, B, V]
     logits_message = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
@@ -441,7 +389,8 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     graph_utils.add_dict_to_collection({
       "logits_message": logits_message, 
       "logits_topic": logits_topic,
-      "logits_output": logits
+      "logits_output": logits,
+      "topic_word_location": topic_word_location
       }, "logits")
 
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32)
@@ -450,7 +399,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
     tf.logging.info("decoder train end")
-    return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
+    return ConvDecoderOutput(logits=logits_message, predicted_ids=sample_ids)
 
   def _build(self, enc_output, labels=None, sequence_length=None):
     
