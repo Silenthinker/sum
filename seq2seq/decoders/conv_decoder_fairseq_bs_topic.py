@@ -483,7 +483,9 @@ class ConvDecoderFairseqBStopic(Decoder, GraphModule, Configurable):
     conv_dec_dict = {"enc_output":enc_output, "labels:":labels,"sequence_length":sequence_length,"decoder inputs":inputs,"next_layer":next_layer,"logits":logits}
     graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
-    return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
+    ###return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
+    outputs = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids) 
+    return {"outputs": outputs}
 
   def _build(self, enc_output, labels=None, sequence_length=None):
     

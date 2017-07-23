@@ -1,10 +1,14 @@
 export PYTHONIOENCODING=UTF-8
 
-DATA_PATH=$1
-TEST_SOURCES=$2
-MODEL_DIR=$3
+DATA_PATH="$(pwd)/sum_data"
+TEST_SOURCES=${DATA_PATH}
+MODEL_DIR="$(pwd)/sum_conv_seq2seq_rl"
+###DATA_PATH=$1
+###TEST_SOURCES=$2
+###MODEL_DIR=$3
 
-export PRED_DIR=${DATA_PATH}/summary
+##export PRED_DIR=${DATA_PATH}/summary
+export PRED_DIR=${MODEL_DIR}/summary
 export GREEDY_DIR=${PRED_DIR}/greedy
 export BEAM_DIR=${PRED_DIR}/beam
 mkdir -p ${PRED_DIR}

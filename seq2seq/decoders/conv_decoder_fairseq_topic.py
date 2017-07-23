@@ -450,9 +450,11 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
     tf.logging.info("decoder train end")
-    return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
+    ###return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
+    outputs = ConvDecoderOutput(logits=logits, predicted_ids=sample_ids) 
+    return {"outputs": outputs}
 
-  def _build(self, enc_output, labels=None, sequence_length=None):
+  def _build(self, enc_output, labels=None, sequence_length=None, rl=False):
     
     if not self.initial_state:
       self._setup(initial_state=enc_output)
