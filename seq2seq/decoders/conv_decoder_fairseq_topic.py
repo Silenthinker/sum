@@ -254,12 +254,12 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
       "topic_word_location": topic_word_location
       }, "logits_infer")
         
-    ###logits_message = tf.nn.softmax(logits_message)
+    logits_message = tf.nn.softmax(logits_message)
     ###logits_topic = tf.nn.softmax(logits_topic)
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
               
-    return logits
+    return logits_message
 
   def conv_block(self, enc_output, input_embed, is_train=True):
     with tf.variable_scope("decoder_cnn"):    
@@ -295,8 +295,12 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
       else:         
         next_layer_message = linear_mapping_weightnorm(next_layer_message[:,-1:,:], self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_message")
         next_layer_topic = linear_mapping_weightnorm(next_layer_topic[:,-1:,:], self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_topic")
-      next_layer = tf.contrib.layers.dropout(
-        inputs=next_layer,
+      next_layer_message = tf.contrib.layers.dropout(
+        inputs=next_layer_message,
+        keep_prob=self.params["out_dropout_keep_prob"],
+        is_training=is_train)
+      next_layer_topic = tf.contrib.layers.dropout(
+        inputs=next_layer_topic,
         keep_prob=self.params["out_dropout_keep_prob"],
         is_training=is_train)
      
@@ -369,7 +373,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     batch_size = tf.shape(sequence_length)[0]
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
 
-    ###logits_message = tf.nn.softmax(logits_message)
+    logits_message = tf.nn.softmax(logits_message)
     ###logits_topic = tf.nn.softmax(logits_topic)
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
@@ -388,7 +392,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
     tf.logging.info("decoder train end")
-    return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
+    return ConvDecoderOutput(logits=logits_message, predicted_ids=sample_ids)
 
   def _build(self, enc_output, labels=None, sequence_length=None):
     

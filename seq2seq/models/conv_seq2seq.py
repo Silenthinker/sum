@@ -176,7 +176,7 @@ class ConvSeq2Seq(Seq2SeqModel):
         name="W_topic_embedding",
         ###shape=[self.source_vocab_info.total_size, topic_emb_size],
         initializer=source_vocab_topic_emb_tensor,
-        trainable=False) ###trainable: default:true
+        trainable=True) ###trainable: default:true
             
     ###source_topic_emb = tf.nn.embedding_lookup(vacab_topic_emb_tensor,features["source_ids"])
     source_topic_emb = tf.nn.embedding_lookup(W_topic_embedding,features["source_ids"])
