@@ -217,9 +217,6 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
         predicted_ids=sample_ids)
     return outputs, enc_output, next_inputs, finished
 
-
-    
-
   def infer_conv_block(self, enc_output, input_embed):
     tf.logging.info("infer_conv_block")
     # Apply dropout to embeddings
@@ -229,18 +226,16 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
         is_training=self.mode == tf.contrib.learn.ModeKeys.INFER)
      
     next_layer = self.conv_block(enc_output, input_embed, False)
-
       
-    ######   
+    ###split message and topic infomation  
     next_layer_size = next_layer.get_shape().as_list()[-1]
     next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
       
-    ##############load topic words   
+    ###ids tensor of topic words   
     topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]
-       
-    ###logits_message = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
-    ###logits_topic = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
-    ###print(logits_message.get_shape())  #####(?, ?, 31114)
+
+    ###shape = next_layer.get_shape().as_list()
+    ###logits = tf.reshape(next_layer, [-1,shape[-1]])        
     shape_message = next_layer_message.get_shape().as_list()
     logits_message = tf.reshape(next_layer_message, [-1,shape_message[-1]]) 
     shape_topic = next_layer_topic.get_shape().as_list()
@@ -263,10 +258,8 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     ###logits_topic = tf.nn.softmax(logits_topic)
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
-            
-    ###shape = next_layer.get_shape().as_list()
-    ###logits = tf.reshape(next_layer, [-1,shape[-1]])   
-    return logits_message
+              
+    return logits
 
   def conv_block(self, enc_output, input_embed, is_train=True):
     with tf.variable_scope("decoder_cnn"):    
@@ -357,28 +350,24 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     
     next_layer = self.conv_block(enc_output, inputs, True)   ###(128, 16, 31114)  # [B, T, V]
  
-    ######   
+    ###split message and topic information  
     next_layer_size = next_layer.get_shape().as_list()[-1]
     next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
         
-    ##############load topic words' id tensor
+    ###load topic words' id tensor
     topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]
        
-    #####logits = _transpose_batch_time(next_layer)    ###logits:(13, 128, 31114)   # [T, B, V]
+    ###logits = _transpose_batch_time(next_layer)    ###logits:(13, 128, 31114)   # [T, B, V]
     logits_message = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
     logits_topic = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
     ###print(logits_message.get_shape())  #####(?, ?, 31114)
     
     vocab_size = logits_message.get_shape().as_list()[-1]
-    #####b_size = logits_message.get_shape().as_list()[-2]  #None
-    #####t_size = logits_message.get_shape().as_list()[-3]  #None
     topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
     topic_word_location = tf.reduce_sum(topic_word_onehot,0)
     topic_word_location = tf.expand_dims(topic_word_location, 0)
     batch_size = tf.shape(sequence_length)[0]
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
-    #####topic_word_location = tf.expand_dims(topic_word_location, 0)
-    #####topic_words_mask = tf.tile(topic_word_location,[t_size,1])
 
     ###logits_message = tf.nn.softmax(logits_message)
     ###logits_topic = tf.nn.softmax(logits_topic)
@@ -399,7 +388,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
     tf.logging.info("decoder train end")
-    return ConvDecoderOutput(logits=logits_message, predicted_ids=sample_ids)
+    return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
 
   def _build(self, enc_output, labels=None, sequence_length=None):
     

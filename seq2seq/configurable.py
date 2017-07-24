@@ -92,6 +92,7 @@ def _parse_params(params, default_params):
     params = {}
   result = copy.deepcopy(default_params)
   for key, value in params.items():
+    ###print("infer:"+key)
     # If param is unknown, drop it to stay compatible with past versions
     if key not in default_params:
       raise ValueError("%s is not a valid model parameter" % key)

@@ -169,9 +169,17 @@ class ConvSeq2Seq(Seq2SeqModel):
     source_embedded = tf.nn.embedding_lookup(self.source_embedding_fairseq(),features["source_ids"])
     
     
-    vacab_topic_emb_tensor = graph_utils.get_dict_from_collection("vacab_topic_emb_tensor")["vacab_topic_emb_tensor"]
-    
-    source_topic_emb = tf.nn.embedding_lookup(vacab_topic_emb_tensor,features["source_ids"])
+    source_vocab_topic_emb_tensor = graph_utils.get_dict_from_collection("vocab_topic_emb_tensor")["source_vocab_topic_emb_tensor"]
+     
+    ###topic_emb_size = vacab_topic_emb_tensor.get_shape().as_list()[-1]
+    W_topic_embedding = tf.get_variable(
+        name="W_topic_embedding",
+        ###shape=[self.source_vocab_info.total_size, topic_emb_size],
+        initializer=source_vocab_topic_emb_tensor,
+        trainable=False) ###trainable: default:true
+            
+    ###source_topic_emb = tf.nn.embedding_lookup(vacab_topic_emb_tensor,features["source_ids"])
+    source_topic_emb = tf.nn.embedding_lookup(W_topic_embedding,features["source_ids"])
     
     graph_utils.add_dict_to_collection({
       "source_message_emb": source_embedded, 

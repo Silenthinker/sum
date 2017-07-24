@@ -24,6 +24,8 @@ from tensorflow import gfile
 
 from seq2seq import graph_utils
 
+import random
+
 SpecialVocab = collections.namedtuple("SpecialVocab",
                                       ["UNK", "SEQUENCE_START", "SEQUENCE_END"])
 
@@ -103,6 +105,7 @@ def create_vocabulary_lookup_table_add_topics(filename, filename_topic, default_
 
   tf.logging.info("Creating vocabulary lookup table of size %d", vocab_size)
 
+  ##############random.shuffle(vocab)  ###test
   vocab_tensor = tf.constant(vocab)
   count_tensor = tf.constant(counts, dtype=tf.float32)
   ###vocab_idx_tensor = tf.range(vocab_size, dtype=tf.int64)
@@ -125,8 +128,7 @@ def create_vocabulary_lookup_table_add_topics(filename, filename_topic, default_
       vocab_tensor, count_tensor, tf.string, tf.float32)
   word_to_count_table = tf.contrib.lookup.HashTable(word_to_count_init, -1)
  
-    
-  
+  ################calculate topic words and build target vocab topic words ids index     
   words=[]
   features=[]
   emb_size=0
@@ -153,12 +155,8 @@ def create_vocabulary_lookup_table_add_topics(filename, filename_topic, default_
   topic_words_tensor = tf.constant(topic_words,dtype=tf.string)
   
   graph_utils.add_dict_to_collection({"topic_words_tensor": topic_words_tensor}, "topic_words_tensor")    
-  ########topic_words_tensor = graph_utils.get_dict_from_collection("topic_words")["topic_words"]  
-  ###source_vocab_to_id = graph_utils.get_dict_from_collection("vocab_tables")["source_vocab_to_id"]
-  ##########source_vocab_to_id = graph_utils.get_dict_from_collection("vocab_tables")["target_vocab_to_id"]
-  #############topic_words_id_tensor = source_vocab_to_id.lookup(topic_words_tensor)
-  
-  
+  ###topic_words_id_tensor = target_vocab_to_id.lookup(topic_words_tensor)
+  #################
   
   ### Load topic into memory
   with gfile.GFile(filename_topic) as file:
@@ -166,39 +164,42 @@ def create_vocabulary_lookup_table_add_topics(filename, filename_topic, default_
   vocab_topic_size = len(vocab_topic)
     
   vocab_topic, topic_embedding = zip(*[_.split("\t") for _ in vocab_topic])
-  ######vocab_topic, topic_embedding = zip(*[ [_.split(" ")[0], ' '.join(_.split(" ")[1:257])] for _ in vocab_topic])
+  ###vocab_topic, topic_embedding = zip(*[ [_.split(" ")[0], ' '.join(_.split(" ")[1:257])] for _ in vocab_topic])
   topic_embedding = [list( float(_) for _ in _.split(" ") ) for _ in topic_embedding]
   topic_emb_size = len(topic_embedding[0])
   ###print("topic_emb_size:"+str(topic_emb_size))
+  """
+  for i in range(100):
+    print(vocab_topic[i]+":origin ")
+    print(topic_embedding[i][0:20])
+  """
   
-  vocab_topic = list(vocab_topic)
+  ###vocab_topic = list(vocab_topic)
   
+  """
   special_vocabTopic = get_special_vocab(vocab_topic_size)
   vocab_topic += list(special_vocabTopic._fields)
   vocab_topic_size += len(special_vocabTopic)
   topic_embedding += [[float(0)]*topic_emb_size for _ in list(special_vocabTopic._fields)]
   ###print("vocab_topic_size:"+str(vocab_topic_size))
-  
-  """  
-  for word in vocab:
-      if vacab_topic_dict.has_key(word):
-          vacab_topic_dict[word] = topic_embedding[i]
-      else:
-          vacab_topic_dict[word] = [0]*256
   """
 
-  vacab_topic_dict = []
+  ##vacab_topic_dict = []
+  vocab_topic_emb = [[float(0)]*topic_emb_size]*len(idx)
   for vocab_idx in idx:
       if vocab[vocab_idx] in vocab_topic:
-         vacab_topic_dict.append(topic_embedding[vocab_topic.index(vocab[vocab_idx])])
+         ##vacab_topic_dict.append(topic_embedding[vocab_topic.index(vocab[vocab_idx])])
+         vocab_topic_emb[vocab_idx] = topic_embedding[vocab_topic.index(vocab[vocab_idx])]
       else:
-         vacab_topic_dict.append( [float(0)]*topic_emb_size ) 
+         ##vacab_topic_dict.append( [float(0)]*topic_emb_size )
+         vocab_topic_emb[vocab_idx] = [float(0)]*topic_emb_size
+  """       
+  for i in range(100):
+      print(vocab[i]+":")
+      print(vocab_topic_emb[i][0:20])
+  """
          
-  vacab_topic_emb_tensor = tf.constant(vacab_topic_dict,dtype=tf.float32)
-  
-  graph_utils.add_dict_to_collection({
-  "vacab_topic_emb_tensor": vacab_topic_emb_tensor
-  }, "vacab_topic_emb_tensor")
+  vocab_topic_emb_tensor = tf.constant(vocab_topic_emb, dtype=tf.float32)
 
   tf.logging.info("Creating topic word vocabulary lookup table of size %d", vocab_topic_size)
 
@@ -214,7 +215,7 @@ def create_vocabulary_lookup_table_add_topics(filename, filename_topic, default_
     
   ###topic_embedding = tf.constant(np.array(topic_embedding))
 
-  return vocab_to_id_table, id_to_vocab_table, word_to_count_table, vacab_topic_emb_tensor, vocab_size
+  return vocab_to_id_table, id_to_vocab_table, word_to_count_table, vocab_topic_emb_tensor, vocab_size
 
 
 def create_vocabulary_lookup_table(filename, default_value=None):

@@ -288,12 +288,17 @@ class Seq2SeqModel(ModelBase):
     # Create vocabulary lookup for source
     ###source_vocab_to_id, source_id_to_vocab, source_word_to_count, _ = \
       ###vocab.create_vocabulary_lookup_table(self.source_vocab_info.path)
-    source_vocab_to_id, source_id_to_vocab, source_word_to_count, vocab_topic_emb_tensor, _ = \
+    source_vocab_to_id, source_id_to_vocab, source_word_to_count, source_vocab_topic_emb_tensor, _ = \
       vocab.create_vocabulary_lookup_table_add_topics(self.source_vocab_info.path,self.params["topic_model"])
 
     # Create vocabulary look for target
-    target_vocab_to_id, target_id_to_vocab, target_word_to_count, vocab_topic_emb_tensor2, _ = \
+    target_vocab_to_id, target_id_to_vocab, target_word_to_count, target_vocab_topic_emb_tensor, _ = \
       vocab.create_vocabulary_lookup_table_add_topics(self.target_vocab_info.path,self.params["topic_model"])
+      
+    graph_utils.add_dict_to_collection({
+        "source_vocab_topic_emb_tensor": source_vocab_topic_emb_tensor,
+        "target_vocab_topic_emb_tensor": target_vocab_topic_emb_tensor
+       }, "vocab_topic_emb_tensor")
       
     topic_words_tensor = graph_utils.get_dict_from_collection("topic_words_tensor")["topic_words_tensor"]
     topic_words_id_tensor = target_vocab_to_id.lookup(topic_words_tensor)
@@ -331,12 +336,14 @@ class Seq2SeqModel(ModelBase):
           seq_dim=1,
           batch_dim=0,
           name=None)
+      """
       features["source_topicEmb"] = tf.reverse_sequence(
           input=features["source_topicEmb"],
           seq_lengths=features["source_len"],
           seq_dim=1,
           batch_dim=0,
           name=None)
+      """
 
     features["source_len"] = tf.to_int32(features["source_len"])
     tf.summary.histogram("source_len", tf.to_float(features["source_len"]))
