@@ -254,12 +254,12 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
       "topic_word_location": topic_word_location
       }, "logits_infer")
         
-    logits_message = tf.nn.softmax(logits_message)
+    ###logits_message = tf.nn.softmax(logits_message)
     ###logits_topic = tf.nn.softmax(logits_topic)
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
               
-    return logits_message
+    return logits
 
   def conv_block(self, enc_output, input_embed, is_train=True):
     with tf.variable_scope("decoder_cnn"):    
@@ -366,14 +366,14 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     logits_topic = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
     ###print(logits_message.get_shape())  #####(?, ?, 31114)
     
-    vocab_size = logits_message.get_shape().as_list()[-1]
+    vocab_size = logits_topic.get_shape().as_list()[-1]
     topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
     topic_word_location = tf.reduce_sum(topic_word_onehot,0)
     topic_word_location = tf.expand_dims(topic_word_location, 0)
     batch_size = tf.shape(sequence_length)[0]
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
 
-    logits_message = tf.nn.softmax(logits_message)
+    ###logits_message = tf.nn.softmax(logits_message)
     ###logits_topic = tf.nn.softmax(logits_topic)
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
@@ -392,7 +392,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
     tf.logging.info("decoder train end")
-    return ConvDecoderOutput(logits=logits_message, predicted_ids=sample_ids)
+    return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
 
   def _build(self, enc_output, labels=None, sequence_length=None):
     
