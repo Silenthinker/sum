@@ -259,7 +259,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
               
-    return logits_message
+    return logits
 
   def conv_block(self, enc_output, input_embed, is_train=True):
     with tf.variable_scope("decoder_cnn"):    
@@ -392,7 +392,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
     tf.logging.info("decoder train end")
-    return ConvDecoderOutput(logits=logits_message, predicted_ids=sample_ids)
+    return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
 
   def _build(self, enc_output, labels=None, sequence_length=None):
     

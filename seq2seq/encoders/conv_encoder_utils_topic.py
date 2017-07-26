@@ -102,14 +102,14 @@ def gated_linear_units(inputs):
   return tf.multiply(input_pass, input_gate)
  
 
-def conv_encoder_stack(inputs, nhids_list, kwidths_list, dropout_dict, mode):
+def conv_encoder_stack(inputs, nhids_list, kwidths_list, dropout_dict, mode, flag):  ############add encoder and decoder flag
   next_layer = inputs
   for layer_idx in range(len(nhids_list)):
     nin = nhids_list[layer_idx] if layer_idx == 0 else nhids_list[layer_idx-1]
     nout = nhids_list[layer_idx]
     if nin != nout:
       #mapping for res add
-      res_inputs = linear_mapping_weightnorm(next_layer, nout, dropout=dropout_dict['src'], var_scope_name="linear_mapping_cnn_" + str(layer_idx))    
+      res_inputs = linear_mapping_weightnorm(next_layer, nout, dropout=dropout_dict['src'], var_scope_name=flag+"linear_mapping_cnn_" + str(layer_idx))    
     else:
       res_inputs = next_layer
     #dropout before input to conv
@@ -118,7 +118,7 @@ def conv_encoder_stack(inputs, nhids_list, kwidths_list, dropout_dict, mode):
       keep_prob=dropout_dict['hid'],
       is_training=mode == tf.contrib.learn.ModeKeys.TRAIN)
    
-    next_layer = conv1d_weightnorm(inputs=next_layer, layer_idx=layer_idx, out_dim=nout*2, kernel_size=kwidths_list[layer_idx], padding="SAME", dropout=dropout_dict['hid'], var_scope_name="conv_layer_"+str(layer_idx)) 
+    next_layer = conv1d_weightnorm(inputs=next_layer, layer_idx=layer_idx, out_dim=nout*2, kernel_size=kwidths_list[layer_idx], padding="SAME", dropout=dropout_dict['hid'], var_scope_name=flag+"conv_layer_"+str(layer_idx)) 
     ''' 
     next_layer = tf.contrib.layers.conv2d(
         inputs=next_layer,
@@ -144,7 +144,7 @@ def conv_decoder_stack(target_embed, enc_output, inputs, nhids_list, kwidths_lis
     nout = nhids_list[layer_idx]
     if nin != nout:
       #mapping for res add
-      res_inputs = linear_mapping_weightnorm(next_layer, nout, dropout=dropout_dict['hid'], var_scope_name="linear_mapping_cnn_" + str(layer_idx))      
+      res_inputs = linear_mapping_weightnorm(next_layer, nout, dropout=dropout_dict['hid'], var_scope_name="decoder_linear_mapping_cnn_" + str(layer_idx))      
     else:
       res_inputs = next_layer
     #dropout before input to conv
@@ -155,7 +155,7 @@ def conv_decoder_stack(target_embed, enc_output, inputs, nhids_list, kwidths_lis
     # special process here, first padd then conv, because tf does not suport padding other than SAME and VALID
     next_layer = tf.pad(next_layer, [[0, 0], [kwidths_list[layer_idx]-1, kwidths_list[layer_idx]-1], [0, 0]], "CONSTANT")
     
-    next_layer = conv1d_weightnorm(inputs=next_layer, layer_idx=layer_idx, out_dim=nout*2, kernel_size=kwidths_list[layer_idx], padding="VALID", dropout=dropout_dict['hid'], var_scope_name="conv_layer_"+str(layer_idx)) 
+    next_layer = conv1d_weightnorm(inputs=next_layer, layer_idx=layer_idx, out_dim=nout*2, kernel_size=kwidths_list[layer_idx], padding="VALID", dropout=dropout_dict['hid'], var_scope_name="decoder_conv_layer_"+str(layer_idx)) 
     '''
     next_layer = tf.contrib.layers.conv2d(
         inputs=next_layer,
@@ -221,7 +221,7 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     encoder_output_c_message, encoder_output_c_topic = tf.split(encoder_output.attention_values,[embed_size,embed_size],2)  ######
     #######print("encoder_output_a_message length[0]:"+str(encoder_output_a_message.get_shape().as_list()[0])+" encoder_output_a_message:"+str(encoder_output_a_message.get_shape().as_list()[1])) 
     
-    ###### 
+    ######
     att_score_message_share = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
     att_score_message = tf.nn.softmax(att_score_message_share)        
   

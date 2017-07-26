@@ -119,7 +119,7 @@ class ConvEncoderFairseqTopic(Encoder):
         
         # mapping emb dim to hid dim
         next_layer = linear_mapping_weightnorm(next_layer, nhids_list[0], dropout=self.params["embedding_dropout_keep_prob"], var_scope_name="linear_mapping_before_cnn_message")      
-        next_layer = conv_encoder_stack(next_layer, nhids_list, kwidths_list, {'src':self.params["embedding_dropout_keep_prob"], 'hid': self.params["nhid_dropout_keep_prob"]}, mode=self.mode)
+        next_layer = conv_encoder_stack(next_layer, nhids_list, kwidths_list, {'src':self.params["embedding_dropout_keep_prob"], 'hid': self.params["nhid_dropout_keep_prob"]}, mode=self.mode, flag="message")
         
         next_layer = linear_mapping_weightnorm(next_layer, embed_size, var_scope_name="linear_mapping_after_cnn_message")
       ## The encoder stack will receive gradients *twice* for each attention pass: dot product and weighted sum.
@@ -144,7 +144,7 @@ class ConvEncoderFairseqTopic(Encoder):
         
         # mapping emb dim to hid dim
         next_layer_topic = linear_mapping_weightnorm(next_layer_topic, nhids_list[0], dropout=self.params["embedding_dropout_keep_prob"], var_scope_name="linear_mapping_before_cnn_topic")      
-        next_layer_topic = conv_encoder_stack(next_layer_topic, nhids_list, kwidths_list, {'src':self.params["embedding_dropout_keep_prob"], 'hid': self.params["nhid_dropout_keep_prob"]}, mode=self.mode)
+        next_layer_topic = conv_encoder_stack(next_layer_topic, nhids_list, kwidths_list, {'src':self.params["embedding_dropout_keep_prob"], 'hid': self.params["nhid_dropout_keep_prob"]}, mode=self.mode, flag="topic")
         
         next_layer_topic = linear_mapping_weightnorm(next_layer_topic, topic_embed_size, var_scope_name="linear_mapping_after_cnn_topic")
       ## The encoder stack will receive gradients *twice* for each attention pass: dot product and weighted sum.
