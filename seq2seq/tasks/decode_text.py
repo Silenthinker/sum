@@ -30,6 +30,7 @@ from tensorflow import gfile
 
 from seq2seq.tasks.inference_task import InferenceTask, unbatch_dict
 
+from seq2seq import graph_utils
 
 def _get_prediction_length(predictions_dict):
   """Returns the length of the prediction based on the index
@@ -186,3 +187,12 @@ class DecodeText(InferenceTask):
       sent = sent.strip()
 
       print(sent)
+      
+      logits_message_infer = graph_utils.get_dict_from_collection("logits_infer")["logits_message_infer"]
+      logits_topic_infer = graph_utils.get_dict_from_collection("logits_infer")["logits_topic_infer"]
+      topic_word_location = graph_utils.get_dict_from_collection("logits_infer")["topic_word_location"]
+      
+      tf.logging.info("logits_message_infer:{}".format(logits_message_infer))
+      tf.logging.info("logits_topic_infer:{}".format(logits_topic_infer))
+      tf.logging.info("topic_word_location:{}".format(topic_word_location))
+      
