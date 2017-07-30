@@ -166,19 +166,19 @@ class ConvSeq2Seq(Seq2SeqModel):
     features["source_ids"] = tf.reverse_sequence(features["source_ids"], features["source_len"], batch_dim=0, seq_dim=1)  # [[1,2,3,4,PAD,PAD,PAD],[2,3,PAD,PAD,PAD,PAD,PAD]]   [4,2]
     features["source_ids"] = tf.reverse(features["source_ids"],[1])  # --> [[4,3,2,1,PAD,PAD,PAD],[3,2,PAD,PAD,PAD,PAD,PAD]] --> [[PAD,PAD,PAD,1,2,3,4],[PAD,PAD,PAD,PAD,PAD,2,3]]
      
-    ###source_embedded = tf.nn.embedding_lookup(self.source_embedding_fairseq(),features["source_ids"])
+    source_embedded = tf.nn.embedding_lookup(self.source_embedding_fairseq(),features["source_ids"])
         
     source_vocab_topic_emb_tensor = graph_utils.get_dict_from_collection("vocab_topic_emb_tensor")["source_vocab_topic_emb_tensor"]
      
     ###topic_emb_size = vacab_topic_emb_tensor.get_shape().as_list()[-1]
-    """
+    
     W_topic_embedding = tf.get_variable(
         name="W_topic_embedding",
         ###shape=[self.source_vocab_info.total_size, topic_emb_size],
         initializer=source_vocab_topic_emb_tensor,
         trainable=True) ###trainable: default:true
-    """
-            
+    
+    """        
     W_topic_embedding = tf.get_variable(
         name="W_topic_embedding",
         shape=[self.source_vocab_info.total_size, self.params["embedding.dim"]],
@@ -187,10 +187,11 @@ class ConvSeq2Seq(Seq2SeqModel):
             stddev=0.1))
             
     source_embedded = tf.nn.embedding_lookup(W_topic_embedding,features["source_ids"])
+    """
             
     ###source_topic_emb = tf.nn.embedding_lookup(vacab_topic_emb_tensor,features["source_ids"])
-    ###source_topic_emb = tf.nn.embedding_lookup(W_topic_embedding,features["source_ids"])
-    source_topic_emb = tf.nn.embedding_lookup(self.source_embedding_fairseq(),features["source_ids"])
+    source_topic_emb = tf.nn.embedding_lookup(W_topic_embedding,features["source_ids"])
+    ###source_topic_emb = tf.nn.embedding_lookup(self.source_embedding_fairseq(),features["source_ids"])
     
     graph_utils.add_dict_to_collection({
       "source_message_emb": source_embedded, 

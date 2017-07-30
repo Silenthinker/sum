@@ -9,7 +9,7 @@ export DEV_SOURCES=${DATA_PATH}/valid.tok.clean.art
 export DEV_TARGETS=${DATA_PATH}/valid.tok.clean.sum
 export TEST_SOURCES=${DATA_PATH}/test.tok.clean.art
 export TEST_TARGETS=${DATA_PATH}/test.tok.clean.sum
-export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716
+export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716_
 
 export TRAIN_STEPS=100000
 
@@ -43,3 +43,4 @@ python -m bin.train \
   --eval_every_n_steps 10000 \
   --train_steps $TRAIN_STEPS \
   --output_dir $MODEL_DIR
+  --save_checkpoints_secs 300

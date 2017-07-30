@@ -18,7 +18,7 @@ from seq2seq.decoders.rnn_decoder import *
 from seq2seq.decoders.attention import *
 from seq2seq.decoders.basic_decoder import *
 from seq2seq.decoders.attention_decoder import *
-###from seq2seq.decoders.conv_decoder_fairseq import *
-###from seq2seq.decoders.conv_decoder_fairseq_bs import *
+from seq2seq.decoders.conv_decoder_fairseq import *
+from seq2seq.decoders.conv_decoder_fairseq_bs import *
 from seq2seq.decoders.conv_decoder_fairseq_topic import *
 from seq2seq.decoders.conv_decoder_fairseq_bs_topic import *

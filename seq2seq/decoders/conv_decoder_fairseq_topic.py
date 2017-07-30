@@ -278,6 +278,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
         
     next_layer_size = next_layer.get_shape().as_list()[-1]      #k
     next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
+    tf.logging.info("softmax before next_layer_message:{}".format(next_layer_message))
     """    
     with tf.variable_scope("softmax"):
       if is_train:
@@ -294,9 +295,11 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     with tf.variable_scope("softmax"):
       if is_train:
         next_layer_message = linear_mapping_weightnorm(next_layer_message, self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_message")
+        tf.logging.info("train softmax insight next_layer_message:{}".format(next_layer_message))
         next_layer_topic = linear_mapping_weightnorm(next_layer_topic, self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_topic")
       else:         
         next_layer_message = linear_mapping_weightnorm(next_layer_message[:,-1:,:], self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_message")
+        tf.logging.info("infer softmax insight next_layer_message:{}".format(next_layer_message))
         next_layer_topic = linear_mapping_weightnorm(next_layer_topic[:,-1:,:], self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_topic")
       next_layer_message = tf.contrib.layers.dropout(
         inputs=next_layer_message,
@@ -310,6 +313,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
       ###next_layer = linear_mapping_weightnorm(next_layer, self.vocab_size, in_dim=self.params["nout_embed"], dropout=self.params["out_dropout_keep_prob"], var_scope_name="logits_before_softmax")
       next_layer_message = linear_mapping_weightnorm(next_layer_message, self.vocab_size, in_dim=self.params["nout_embed"], dropout=self.params["out_dropout_keep_prob"], var_scope_name="logits_before_softmax_message")
       next_layer_topic = linear_mapping_weightnorm(next_layer_topic, self.vocab_size, in_dim=self.params["nout_embed"], dropout=self.params["out_dropout_keep_prob"], var_scope_name="logits_before_softmax_topic")
+      tf.logging.info("softmax after next_layer_message:{}".format(next_layer_message))
       
       next_layer_out = tf.concat([next_layer_message,next_layer_topic],2)
       
@@ -366,7 +370,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
        
     ###logits = _transpose_batch_time(next_layer)    ###logits:(13, 128, 31114)   # [T, B, V]
     logits_message = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
-    logits_topic = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
+    logits_topic = _transpose_batch_time(next_layer_topic)    ###logits:(13, 128, 31114)   # [T, B, V]
     ###print(logits_message.get_shape())  #####(?, ?, 31114)
     
     vocab_size = logits_topic.get_shape().as_list()[-1]

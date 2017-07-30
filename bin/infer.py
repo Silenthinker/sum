@@ -79,7 +79,7 @@ def main(_argv):
 
   # Load saved training options
   train_options = training_utils.TrainOptions.load(FLAGS.model_dir)
-  ###for item in train_options.model_class:
+  ###for item in train_options.model_params:
   ###    print(item)
 
   # Create the model

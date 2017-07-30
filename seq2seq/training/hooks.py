@@ -248,15 +248,15 @@ class TrainSampleHook(TrainingHook):
         tf.logging.info("logits_message:{}".format(logits_message))
         tf.logging.info("logits_topic:{}".format(logits_topic))
         tf.logging.info("logits_output:{}".format(logits_output))
-        tf.logging.info("logits_message sum".format(np.sum(np.array(logits_message),1)))
-        tf.logging.info("logits_topic sum".format(np.sum(np.array(logits_topic),1)))
-        tf.logging.info("logits_output sum".format(np.sum(np.array(logits_output),1)))
+        tf.logging.info("logits_message sum".format(np.sum(np.array(logits_message),axis=1)))
+        tf.logging.info("logits_topic sum".format(np.sum(np.array(logits_topic),axis=1)))
+        tf.logging.info("logits_output sum".format(np.sum(np.array(logits_output),axis=1)))
         
     ##tf.logging.info("loss:{}".format(loss))
     #tf.logging.info("logits_message_infer:{}".format(logits_message_infer))
     #tf.logging.info("logits_topic_infer:{}".format(logits_topic_infer))
     #tf.logging.info("topic_word_location:{}".format(topic_word_location))
-    ##tf.logging.info("topic_words_id_tensor:{}".format(topic_words_id_tensor))
+    ###tf.logging.info("topic_words_id_tensor:{}".format(topic_words_id_tensor))
     
 
     if not self._should_trigger:

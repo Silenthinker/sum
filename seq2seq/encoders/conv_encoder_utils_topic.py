@@ -59,6 +59,7 @@ def linear_mapping(inputs, out_dim, in_dim=None, dropout=1.0, var_scope_name="li
     return tf.contrib.layers.fully_connected(inputs=inputs,num_outputs=out_dim,activation_fn=None, weights_initializer=tf.random_normal_initializer(mean=0, stddev=tf.sqrt(dropout*1.0/input_shape[-1])), biases_initializer=tf.zeros_initializer()) 
  
 def linear_mapping_weightnorm(inputs, out_dim, in_dim=None, dropout=1.0, var_scope_name="linear_mapping"):
+  tf.logging.info("linear_mapping_weightnorm,var_scope_name:{}".format(var_scope_name))
   with tf.variable_scope(var_scope_name):
     input_shape = inputs.get_shape().as_list()    # static shape. may has None
     input_shape_tensor = tf.shape(inputs)    
@@ -77,12 +78,12 @@ def linear_mapping_weightnorm(inputs, out_dim, in_dim=None, dropout=1.0, var_sco
     scaler = tf.div(g, tf.norm(V, axis=0))   # g/2-norm(v)
     inputs = tf.reshape(scaler,[1, out_dim])*inputs + tf.reshape(b,[1, out_dim])   # x*v g/2-norm(v) + b
     
-
     return inputs 
  
 def conv1d_weightnorm(inputs, layer_idx, out_dim, kernel_size, padding="SAME", dropout=1.0,  var_scope_name="conv_layer"):    #padding should take attention
-  
-  with tf.variable_scope("conv_layer_"+str(layer_idx)):
+  tf.logging.info("conv1d_weightnorm,var_scope_name:{}".format(var_scope_name))
+  ###with tf.variable_scope("conv_layer_"+str(layer_idx)):
+  with tf.variable_scope(var_scope_name):
     in_dim = int(inputs.get_shape()[-1])
     V = tf.get_variable('V', shape=[kernel_size, in_dim, out_dim], dtype=tf.float32, initializer=tf.random_normal_initializer(mean=0, stddev=tf.sqrt(4.0*dropout/(kernel_size*in_dim))), trainable=True)
     V_norm = tf.norm(V.initialized_value(), axis=[0,1])  # V shape is M*N*k,  V_norm shape is k  
@@ -106,12 +107,13 @@ def gated_linear_units(inputs):
 
 def conv_encoder_stack(inputs, nhids_list, kwidths_list, dropout_dict, mode, flag):  ############add encoder and decoder flag
   next_layer = inputs
+  tf.logging.info("flag flag flag flag flag flag flag flag flag flag:{}".format(flag))
   for layer_idx in range(len(nhids_list)):
     nin = nhids_list[layer_idx] if layer_idx == 0 else nhids_list[layer_idx-1]
     nout = nhids_list[layer_idx]
     if nin != nout:
       #mapping for res add
-      res_inputs = linear_mapping_weightnorm(next_layer, nout, dropout=dropout_dict['src'], var_scope_name=flag+"linear_mapping_cnn_" + str(layer_idx))    
+      res_inputs = linear_mapping_weightnorm(next_layer, nout, dropout=dropout_dict['src'], var_scope_name=flag+"_"+"linear_mapping_cnn_" + str(layer_idx))    
     else:
       res_inputs = next_layer
     #dropout before input to conv
@@ -120,7 +122,7 @@ def conv_encoder_stack(inputs, nhids_list, kwidths_list, dropout_dict, mode, fla
       keep_prob=dropout_dict['hid'],
       is_training=mode == tf.contrib.learn.ModeKeys.TRAIN)
    
-    next_layer = conv1d_weightnorm(inputs=next_layer, layer_idx=layer_idx, out_dim=nout*2, kernel_size=kwidths_list[layer_idx], padding="SAME", dropout=dropout_dict['hid'], var_scope_name=flag+"conv_layer_"+str(layer_idx)) 
+    next_layer = conv1d_weightnorm(inputs=next_layer, layer_idx=layer_idx, out_dim=nout*2, kernel_size=kwidths_list[layer_idx], padding="SAME", dropout=dropout_dict['hid'], var_scope_name=flag+"_"+"conv_layer_"+str(layer_idx)) 
     ''' 
     next_layer = tf.contrib.layers.conv2d(
         inputs=next_layer,
@@ -136,8 +138,6 @@ def conv_encoder_stack(inputs, nhids_list, kwidths_list, dropout_dict, mode, fla
     next_layer = (next_layer + res_inputs) * tf.sqrt(0.5)
 
   return next_layer 
-
-
 
 def conv_decoder_stack(target_embed, enc_output, inputs, nhids_list, kwidths_list, dropout_dict, mode):
   next_layer = inputs
@@ -293,8 +293,6 @@ def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki))
     
     ###logits_output = (logits_message_exp + logits_topic_exp)/logits_exp_sum
     logits_softmax_output = (logits_message_exp + topic_words_mask*logits_topic_exp)/logits_exp_sum
-    
-    
-    
+        
     return logits_softmax_output
     
