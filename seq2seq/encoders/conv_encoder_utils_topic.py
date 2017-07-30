@@ -22,6 +22,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from seq2seq import graph_utils
+
 def parse_list_or_default(params_str, number, default_val, delimitor=','):
   param_list = []
   if params_str == "":
@@ -253,7 +255,7 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     att_out = tf.concat([att_out_message,att_out_topic],2)
 
   return att_out
-
+"""
 def topic_softmax(logits_message,logits_topic):  ###(exp(Vi)+exp(Ki)) / (sum(exp(Vi))+sum(exp(Ki))) , if the word is a topic word in the mean while
     logits_message_exp = tf.exp(logits_message)
     logits_topic_exp = tf.exp(logits_topic)
@@ -268,4 +270,31 @@ def topic_softmax(logits_message,logits_topic):  ###(exp(Vi)+exp(Ki)) / (sum(exp
     logits_output = (logits_message_exp + logits_topic_exp)/logits_exp_sum
     
     return logits_output
+"""
+
+def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki)) / (sum(exp(Vi))+sum(exp(Ki))) , if the word is a topic word in the mean while
+    logits_message_exp = tf.exp(logits_message)
+    logits_topic_exp = tf.exp(logits_topic)
+    
+    topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]    
+    vocab_size = logits_topic.get_shape().as_list()[-1]
+    topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
+    topic_word_location = tf.reduce_sum(topic_word_onehot,0)
+    topic_word_location = tf.expand_dims(topic_word_location, 0)
+    ###batch_size = self.config.beam_width##########################
+    topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
+    
+    logits_exp_sum = tf.concat([logits_message_exp, topic_words_mask*logits_topic_exp],-1)   ##require sum of the last dim
+    logits_exp_sum = tf.reduce_sum(logits_exp_sum,-1)
+    logits_exp_sum = tf.expand_dims(logits_exp_sum,-1)
+    
+    vocab_size = logits_message_exp.get_shape().as_list()[-1]
+    logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])
+    
+    ###logits_output = (logits_message_exp + logits_topic_exp)/logits_exp_sum
+    logits_softmax_output = (logits_message_exp + topic_words_mask*logits_topic_exp)/logits_exp_sum
+    
+    
+    
+    return logits_softmax_output
     

@@ -236,18 +236,22 @@ class TrainSampleHook(TrainingHook):
         self._source_emb["source_topic_emb"],
         self._logits["logits_message"],
         self._logits["logits_topic"],
+        self._logits["logits_output"],
         self._vocab_tables["topic_words_id_tensor"],
         self._logits["topic_word_location"],
-        #self._logits_infer["logits_message_infer"],
-        #self._logits_infer["logits_topic_infer"],
         self._loss["loss"]
       ]
-    source_message_emb, source_topic_emb, logits_message, logits_topic, topic_words_id_tensor, topic_word_location, loss = self._session.run(source_emb_logits_fetches)
+    source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, topic_words_id_tensor, topic_word_location, loss = self._session.run(source_emb_logits_fetches)
     ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
     ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
     if step%500 == 0:
         tf.logging.info("logits_message:{}".format(logits_message))
         tf.logging.info("logits_topic:{}".format(logits_topic))
+        tf.logging.info("logits_output:{}".format(logits_output))
+        tf.logging.info("logits_message sum".format(np.sum(np.array(logits_message),1)))
+        tf.logging.info("logits_topic sum".format(np.sum(np.array(logits_topic),1)))
+        tf.logging.info("logits_output sum".format(np.sum(np.array(logits_output),1)))
+        
     ##tf.logging.info("loss:{}".format(loss))
     #tf.logging.info("logits_message_infer:{}".format(logits_message_infer))
     #tf.logging.info("logits_topic_infer:{}".format(logits_topic_infer))

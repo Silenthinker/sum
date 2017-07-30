@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from seq2seq.encoders.conv_encoder_utils_topic import *
+
 
 def cross_entropy_sequence_loss(logits, targets, sequence_length):
   """Calculates the per-example cross-entropy loss for a sequence of logits and
@@ -35,6 +37,15 @@ def cross_entropy_sequence_loss(logits, targets, sequence_length):
     A tensor of shape [T, B] that contains the loss per example, per time step.
   """
   with tf.name_scope("cross_entropy_sequence_loss"):
+    """  
+    logits_size = logits.get_shape().as_list()[-1]
+    batch_size = logits.get_shape().as_list()[0]
+    logits_message, logits_topic = tf.split(logits,[tf.cast(logits_size/2,tf.int64),tf.cast(logits_size/2,tf.int64)],-1)
+    vocab_size = logits_message.get_shape().as_list()[-1]    
+    targets_one_hot = tf.contrib.layers.one_hot_encoding(targets,num_classes=vocab_size)    
+    logits_softmax_output = topic_softmax(logits_message,logits_topic,batch_size)
+    losses = -tf.reduce_sum(targets_one_hot * tf.log(logits_softmax_output), 1)
+    """  
     losses = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=logits, labels=targets)
 
