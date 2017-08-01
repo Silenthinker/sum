@@ -205,7 +205,13 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     enc_output = state 
     logits = self.infer_conv_block(enc_output, cur_inputs_pos)
     
+    ############
+    batch_size = self.config.beam_width
+    logits_size = logits.get_shape().as_list()[-1]
+    logits_message, logits_topic = tf.split(logits,[tf.cast(logits_size/2,tf.int64),tf.cast(logits_size/2,tf.int64)],2)
+    logits = topic_softmax(logits_message,logits_topic,batch_size)
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32)
+    ###sample_ids = tf.cast(tf.argmax(logits, axis=-1), dtypes.int32)
 
     finished, next_inputs = self.next_inputs(sample_ids=sample_ids)
     next_inputs = tf.reshape(next_inputs, [self.config.beam_width, 1, inputs.get_shape().as_list()[-1]])
@@ -234,6 +240,8 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     ###ids tensor of topic words   
     topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]
 
+    ###batch_size = next_layer_topic.get_shape().as_list()[0]
+
     ###shape = next_layer.get_shape().as_list()
     ###logits = tf.reshape(next_layer, [-1,shape[-1]])        
     shape_message = next_layer_message.get_shape().as_list()
@@ -245,7 +253,7 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
     topic_word_location = tf.reduce_sum(topic_word_onehot,0)
     topic_word_location = tf.expand_dims(topic_word_location, 0)
-    batch_size = self.config.beam_width##########################
+    batch_size = self.config.beam_width#########
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
     
     graph_utils.add_dict_to_collection({
@@ -255,12 +263,11 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
       }, "logits_infer")
         
     ###logits_message = tf.nn.softmax(logits_message)
-    ###logits_topic = tf.nn.softmax(logits_topic)
-    
-    logits = tf.add(logits_message,logits_topic*topic_words_mask)
+    ###logits_topic = tf.nn.softmax(logits_topic)   
+    ###logits = tf.add(logits_message,logits_topic*topic_words_mask)
     ##tf.logging.info("infer logits_message shape:"+logits_message.get_shape())
     ###logits = topic_softmax(logits_message,logits_topic,batch_size)
-    ###logits=tf.concat([logits_message,logits_topic],-1)
+    logits=tf.concat([logits_message,logits_topic],-1)
               
     return logits
 
@@ -382,14 +389,10 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     
     tf.logging.info("topic_words_mask.get_shape():{}".format(topic_words_mask.get_shape()))
     tf.logging.info("logits_topic.get_shape():{}".format(logits_topic.get_shape()))
-
-    ###logits_message = tf.nn.softmax(logits_message)
-    ###logits_topic = tf.nn.softmax(logits_topic)
     
-    logits = tf.add(logits_message,logits_topic*topic_words_mask)
-    ##logits = tf.nn.softmax(logits)
+    ###logits = tf.add(logits_message,logits_topic*topic_words_mask)
     ######logits = topic_softmax(logits_message,logits_topic,batch_size) ###we can't pass a scaled tensor to the tf.nn.sparse_softmax_cross_entropy_with_logits
-    ###logits=tf.concat([logits_message,logits_topic],-1)
+    logits=tf.concat([logits_message,logits_topic],-1)
     
     graph_utils.add_dict_to_collection({
       "logits_message": logits_message, 

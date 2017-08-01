@@ -256,6 +256,7 @@ class ConvDecoderFairseqBStopic(Decoder, GraphModule, Configurable):
     
 
   def infer_conv_block(self, enc_output, input_embed):
+    tf.logging.info("infer_conv_block bs")
     # Apply dropout to embeddings
     input_embed = tf.contrib.layers.dropout(
         inputs=input_embed,
@@ -263,7 +264,6 @@ class ConvDecoderFairseqBStopic(Decoder, GraphModule, Configurable):
         is_training=self.mode == tf.contrib.learn.ModeKeys.INFER)
      
     next_layer = self.conv_block(enc_output, input_embed, False)
-
       
     ###split message and topic information 
     next_layer_size = next_layer.get_shape().as_list()[-1]
@@ -279,17 +279,15 @@ class ConvDecoderFairseqBStopic(Decoder, GraphModule, Configurable):
     shape_topic = next_layer_topic.get_shape().as_list()
     logits_topic = tf.reshape(next_layer_topic, [-1,shape_topic[-1]])
     
-    vocab_size = logits_message.get_shape().as_list()[-1]
+    vocab_size = logits_topic.get_shape().as_list()[-1]
     topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
     topic_word_location = tf.reduce_sum(topic_word_onehot,0)
     topic_word_location = tf.expand_dims(topic_word_location, 0)
     batch_size = self.config.beam_width##########################
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
-        
-    ###logits_message = tf.nn.softmax(logits_message)
-    ###logits_topic = tf.nn.softmax(logits_topic)
     
     logits = tf.add(logits_message,logits_topic*topic_words_mask)
+    ###logits=tf.concat([logits_message,logits_topic],-1)
             
     graph_utils.add_dict_to_collection({
       "logits_message_infer": logits_message, 
@@ -297,7 +295,7 @@ class ConvDecoderFairseqBStopic(Decoder, GraphModule, Configurable):
       "logits":logits
       }, "logits_infer")
     
-    return logits_message
+    return logits
 
   def conv_block(self, enc_output, input_embed, is_train=True):
     with tf.variable_scope("decoder_cnn"):    

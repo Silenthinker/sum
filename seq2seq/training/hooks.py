@@ -183,6 +183,7 @@ class TrainSampleHook(TrainingHook):
     self._source_emb = graph_utils.get_dict_from_collection("source_emb")
     self._logits = graph_utils.get_dict_from_collection("logits")
     ##self._logits_infer = graph_utils.get_dict_from_collection("logits_infer")
+    self._losses = graph_utils.get_dict_from_collection("losses")
     self._loss = graph_utils.get_dict_from_collection("loss")
     self._vocab_tables = graph_utils.get_dict_from_collection("vocab_tables")
     # Create the sample directory
@@ -239,18 +240,20 @@ class TrainSampleHook(TrainingHook):
         self._logits["logits_output"],
         self._vocab_tables["topic_words_id_tensor"],
         self._logits["topic_word_location"],
+        self._losses["losses"],
         self._loss["loss"]
       ]
-    source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, topic_words_id_tensor, topic_word_location, loss = self._session.run(source_emb_logits_fetches)
+    source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, topic_words_id_tensor, topic_word_location, losses, loss = self._session.run(source_emb_logits_fetches)
     ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
     ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
     if step%500 == 0:
         tf.logging.info("logits_message:{}".format(logits_message))
         tf.logging.info("logits_topic:{}".format(logits_topic))
         tf.logging.info("logits_output:{}".format(logits_output))
-        tf.logging.info("logits_message sum".format(np.sum(np.array(logits_message),axis=1)))
-        tf.logging.info("logits_topic sum".format(np.sum(np.array(logits_topic),axis=1)))
-        tf.logging.info("logits_output sum".format(np.sum(np.array(logits_output),axis=1)))
+        tf.logging.info("logits_message sum:{}".format(np.sum(np.array(logits_message),axis=1)))
+        tf.logging.info("logits_topic sum:{}".format(np.sum(np.array(logits_topic),axis=1)))
+        tf.logging.info("logits_output sum:{}".format(np.sum(np.array(logits_output),axis=1)))
+    tf.logging.info("losses:{}".format(losses))
         
     ##tf.logging.info("loss:{}".format(loss))
     #tf.logging.info("logits_message_infer:{}".format(logits_message_infer))
