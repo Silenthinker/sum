@@ -41,21 +41,22 @@ def cross_entropy_sequence_loss(logits, targets, sequence_length):
   """
   with tf.name_scope("cross_entropy_sequence_loss"):
       
-    losses = cross_entropy_with_softmax_losses(logits,targets)
-    tf.logging.info("losses:{}"+str(losses))
-    """  
+    ###losses = cross_entropy_with_softmax_losses(logits,targets)
+    ###losses = cross_entropy(logits,targets)
+    ###tf.logging.info("losses:{}"+str(losses))
+      
     losses = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=logits, labels=targets)
     
     tf.logging.info("sequence_length:{}"+str(sequence_length))  ###shape=(32,)
     tf.logging.info("targets:{}"+str(targets))   ###shape=(?, 32)
-    """
+    
     # Mask out the losses we don't care about
     loss_mask = tf.sequence_mask(
         tf.to_int32(sequence_length), tf.to_int32(tf.shape(targets)[0]))
-    tf.logging.info("loss_mask:{}"+str(loss_mask)) ### shape=(32, ?)
+    ###tf.logging.info("loss_mask:{}"+str(loss_mask)) ### shape=(32, ?)
     losses = losses * tf.transpose(tf.to_float(loss_mask), [1, 0])
-    tf.logging.info("losses:{}"+str(losses)) ### shape=(32, ?)
+    ###tf.logging.info("losses:{}"+str(losses)) ### shape=(32, ?)
     
     graph_utils.add_dict_to_collection({
       "losses": losses, 

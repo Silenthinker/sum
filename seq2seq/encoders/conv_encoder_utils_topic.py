@@ -285,6 +285,7 @@ def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki))
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
     
     logits_exp_sum = tf.concat([logits_message_exp, topic_words_mask*logits_topic_exp],-1)   ##require sum of the last dim
+    ###logits_exp_sum = tf.add(logits_message_exp, topic_words_mask*logits_topic_exp)   ##require sum of the last dim
     logits_exp_sum = tf.reduce_sum(logits_exp_sum,-1)
     logits_exp_sum = tf.expand_dims(logits_exp_sum,-1)
     
@@ -292,7 +293,14 @@ def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki))
     logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])
     
     ###logits_output = (logits_message_exp + logits_topic_exp)/logits_exp_sum
-    logits_softmax_output = (logits_message_exp + topic_words_mask*logits_topic_exp)/logits_exp_sum
+    logits_softmax_output = (logits_message_exp + topic_words_mask*logits_topic_exp)###/logits_exp_sum
+    ###logits_softmax_output = tf.add(logits_message_exp, topic_words_mask*logits_topic_exp)/logits_exp_sum
+    graph_utils.add_dict_to_collection({
+      "logits_message_exp": logits_message_exp, 
+      "logits_topic_exp": logits_topic_exp,
+      "logits_exp_sum":logits_exp_sum,
+      "logits_softmax_output": logits_softmax_output
+      }, "logits_softmax")
         
     return logits_softmax_output
 
@@ -305,7 +313,18 @@ def cross_entropy_with_softmax_losses(logits,labels):
     tf.logging.info("targets_one_hot shape:{}"+str(targets_one_hot))
     logits_softmax_output = topic_softmax(logits_message,logits_topic,batch_size)
     tf.logging.info("logits_softmax_output shape:{}"+str(logits_softmax_output))
-    losses = -tf.reduce_sum(targets_one_hot * tf.log(logits_softmax_output), -1)
+    losses = -tf.reduce_sum(targets_one_hot * tf.log(tf.clip_by_value(logits_softmax_output,1e-10,1.0)), -1)
+    ###losses = -tf.reduce_sum(targets_one_hot * tf.log(logits_softmax_output,1e-10,1.0), -1)
+    ###losses = tf.transpose(losses)
+    tf.logging.info("losses shape:{}"+str(losses))
+    return losses
+
+def cross_entropy(logits_softmax,labels):
+    vocab_size = logits_softmax.get_shape().as_list()[-1]    
+    targets_one_hot = tf.contrib.layers.one_hot_encoding(labels,num_classes=vocab_size) 
+    tf.logging.info("targets_one_hot shape:{}"+str(targets_one_hot))
+    losses = -tf.reduce_sum(targets_one_hot * tf.log(tf.clip_by_value(logits_softmax,1e-10,1.0)), -1)
+    ###losses = -tf.reduce_sum(targets_one_hot * tf.log(logits_softmax_output,1e-10,1.0), -1)
     ###losses = tf.transpose(losses)
     tf.logging.info("losses shape:{}"+str(losses))
     return losses

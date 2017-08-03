@@ -126,6 +126,8 @@ def create_experiment(output_dir):
     output_dir: Output directory for model checkpoints and summaries.
   """
 
+  os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
   config = run_config.RunConfig(
       tf_random_seed=FLAGS.tf_random_seed,
       save_checkpoints_secs=FLAGS.save_checkpoints_secs,
