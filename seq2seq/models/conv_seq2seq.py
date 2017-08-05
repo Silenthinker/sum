@@ -185,9 +185,9 @@ class ConvSeq2Seq(Seq2SeqModel):
         initializer=tf.random_normal_initializer(
             mean=0.0,
             stddev=0.1))
-            
-    source_embedded = tf.nn.embedding_lookup(W_topic_embedding,features["source_ids"])
-    """
+    """        
+    ###source_embedded = tf.nn.embedding_lookup(W_topic_embedding,features["source_ids"])
+    
             
     ###source_topic_emb = tf.nn.embedding_lookup(vacab_topic_emb_tensor,features["source_ids"])
     source_topic_emb = tf.nn.embedding_lookup(W_topic_embedding,features["source_ids"])
