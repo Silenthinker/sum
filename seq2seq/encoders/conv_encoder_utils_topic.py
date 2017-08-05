@@ -276,6 +276,14 @@ def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki))
     logits_message_exp = tf.exp(logits_message)
     logits_topic_exp = tf.exp(logits_topic)
     
+    
+    logits_message_exp_nan=tf.is_nan(logits_message_exp)
+    logits_message_exp_nan=tf.where(logits_message_exp_nan)
+    
+    logits_topic_exp_nan=tf.is_nan(logits_topic_exp)
+    logits_topic_exp_nan=tf.where(logits_topic_exp_nan)
+    
+    
     topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]  
     vocab_size = logits_topic_exp.get_shape().as_list()[-1]
     topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
@@ -303,6 +311,8 @@ def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki))
     graph_utils.add_dict_to_collection({
       "logits_message_exp": logits_message_exp, 
       "logits_topic_exp": logits_topic_exp,
+      "logits_message_exp_nan":logits_message_exp_nan,
+      "logits_topic_exp_nan":logits_topic_exp_nan,
       "logits_exp_sum":logits_exp_sum,
       "logits_softmax_output": logits_softmax_output,
       "topic_words_mask":topic_words_mask

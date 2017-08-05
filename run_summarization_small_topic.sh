@@ -44,4 +44,4 @@ python -m bin.train \
   --eval_every_n_steps 10000 \
   --train_steps $TRAIN_STEPS \
   --output_dir $MODEL_DIR
-  --save_checkpoints_secs 300
+  --save_checkpoints_secs 200

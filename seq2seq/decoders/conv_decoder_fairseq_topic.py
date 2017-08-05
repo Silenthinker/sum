@@ -395,8 +395,8 @@ class ConvDecoderFairseqTopic(Decoder, GraphModule, Configurable):
     logits_topic_nan=tf.is_nan(logits_topic)
     logits_topic_nan=tf.where(logits_topic_nan)
     
-    logits = tf.add(logits_message,logits_topic*topic_words_mask)
-    ###logits = topic_softmax(logits_message,logits_topic,batch_size) ###we can't pass a scaled tensor to the tf.nn.sparse_softmax_cross_entropy_with_logits
+    ###logits = tf.add(logits_message,logits_topic*topic_words_mask)
+    logits = topic_softmax(logits_message,logits_topic,batch_size) ###we can't pass a scaled tensor to the tf.nn.sparse_softmax_cross_entropy_with_logits
     ###logits=tf.concat([logits_message,logits_topic],-1)
     
     graph_utils.add_dict_to_collection({
