@@ -248,12 +248,14 @@ class TrainSampleHook(TrainingHook):
         self._logits_softmax["topic_words_mask"],
         self._logits_softmax["logits_message_exp_nan"],
         self._logits_softmax["logits_topic_exp_nan"],
+        self._logits_softmax["logits_message_exp"],
+        self._logits_softmax["logits_topic_exp"],
         self._loss["losses"],
         self._loss["loss"]
       ]
     
     
-    source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, logits_message_nan,logits_topic_nan,topic_words_id_tensor, topic_word_location,logits_softmax_output,logits_exp_sum,topic_words_mask, logits_message_exp_nan,logits_topic_exp_nan,losses, loss = self._session.run(source_emb_logits_fetches)
+    source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, logits_message_nan,logits_topic_nan,topic_words_id_tensor, topic_word_location,logits_softmax_output,logits_exp_sum,topic_words_mask, logits_message_exp_nan,logits_topic_exp_nan,logits_message_exp,logits_topic_exp,losses, loss = self._session.run(source_emb_logits_fetches)
     ###source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, logits_message_nan,logits_topic_nan,topic_words_id_tensor, topic_word_location,losses, loss = self._session.run(source_emb_logits_fetches)
     ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
     ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
@@ -292,6 +294,12 @@ class TrainSampleHook(TrainingHook):
         f.write("logits_output:{}".format(logits_output))  
         f.write("logits_output sum:{}".format(np.sum(np.array(logits_output),axis=2)))
         f.write("logits_exp_sum:{}".format(logits_exp_sum))
+        f.write("logits_exp_sum max:{}".format(np.amax(logits_exp_sum)))
+        f.write("logits_exp_sum min:{}".format(np.amin(logits_exp_sum)))
+        f.write("logits_message_exp:{}".format(logits_message_exp))
+        f.write("logits_topic_exp:{}".format(logits_topic_exp))
+        f.write("logits_message_exp max:{}".format(np.amax(logits_message_exp)))
+        f.write("logits_topic_exp max:{}".format(np.amax(logits_topic_exp)))
         ###f.write("topic_words_mask:{}".format(topic_words_mask))
         f.write("losses:{}".format(losses))
         f.write("loss:{}".format(loss))
