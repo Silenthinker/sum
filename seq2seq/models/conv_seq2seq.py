@@ -178,14 +178,14 @@ class ConvSeq2Seq(Seq2SeqModel):
         initializer=source_vocab_topic_emb_tensor,
         trainable=True) ###trainable: default:true
     
-    """        
+    """       
     W_topic_embedding = tf.get_variable(
         name="W_topic_embedding",
         shape=[self.source_vocab_info.total_size, self.params["embedding.dim"]],
         initializer=tf.random_normal_initializer(
             mean=0.0,
             stddev=0.1))
-    """        
+    """       
     ###source_embedded = tf.nn.embedding_lookup(W_topic_embedding,features["source_ids"])
     
             

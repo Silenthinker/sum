@@ -26,6 +26,8 @@ from seq2seq import graph_utils
 
 import random
 
+import numpy as np
+
 SpecialVocab = collections.namedtuple("SpecialVocab",
                                       ["UNK", "SEQUENCE_START", "SEQUENCE_END"])
 
@@ -62,6 +64,13 @@ def get_special_vocab(vocabulary_size):
   """Returns the `SpecialVocab` instance for a given vocabulary size.
   """
   return SpecialVocab(*range(vocabulary_size, vocabulary_size + 3))
+
+
+def random_list_generate(min_value,max_value,list_size):  ######generate random numbers which mean 0, stddev 0.1
+    rarray=np.random.uniform(min_value,max_value,size=list_size)
+    mean=np.average(rarray)
+    stddev=np.std(rarray)*10
+    return [(value-mean)/stddev for value in list(rarray)]
 
 
 def create_vocabulary_lookup_table_add_topics(filename, filename_topic, default_value=None):
@@ -166,6 +175,11 @@ def create_vocabulary_lookup_table_add_topics(filename, filename_topic, default_
   vocab_topic, topic_embedding = zip(*[_.split("\t") for _ in vocab_topic])
   ###vocab_topic, topic_embedding = zip(*[ [_.split(" ")[0], ' '.join(_.split(" ")[1:257])] for _ in vocab_topic])
   topic_embedding = [list( float(_) for _ in _.split(" ") ) for _ in topic_embedding]
+  
+  topic_embedding=np.array(topic_embedding)
+  topic_embedding[topic_embedding>1.0]=1.0
+  topic_embedding=topic_embedding.tolist()
+  
   topic_emb_size = len(topic_embedding[0])
   ###print("topic_emb_size:"+str(topic_emb_size))
   """
@@ -192,7 +206,9 @@ def create_vocabulary_lookup_table_add_topics(filename, filename_topic, default_
          vocab_topic_emb[vocab_idx] = topic_embedding[vocab_topic.index(vocab[vocab_idx])]
       else:
          ##vacab_topic_dict.append( [float(0)]*topic_emb_size )
-         vocab_topic_emb[vocab_idx] = [float(0)]*topic_emb_size
+         ### vocab_topic_emb[vocab_idx] = [float(0)]*topic_emb_size
+         vocab_topic_emb[vocab_idx] = random_list_generate(0,1,256)
+         
   """       
   for i in range(100):
       print(vocab[i]+":")

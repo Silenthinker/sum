@@ -294,17 +294,19 @@ def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki))
     tf.logging.info("logits_topic_exp:{}".format(logits_topic_exp))
     tf.logging.info("topic_words_mask:{}".format(topic_words_mask))
             
-    ###logits_exp_sum = tf.concat([logits_message_exp, topic_words_mask*logits_topic_exp],-1)   ##require sum of the last dim
+    #####################logits_exp_sum = tf.concat([logits_message_exp, topic_words_mask*logits_topic_exp],-1)   ##require sum of the last dim
+    ###logits_exp_sum = logits_topic_exp   ##require sum of the last dim
     logits_exp_sum = logits_message_exp   ##require sum of the last dim
     ###logits_exp_sum = tf.concat([logits_message_exp, logits_topic_exp],-1)   ##require sum of the last dim
     ###logits_exp_sum = tf.add(logits_message_exp, topic_words_mask*logits_topic_exp)   ##require sum of the last dim
     logits_exp_sum = tf.reduce_sum(logits_exp_sum,-1)
     logits_exp_sum = tf.expand_dims(logits_exp_sum,-1)
     
-    vocab_size = logits_message_exp.get_shape().as_list()[-1]
-    ###logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])  ###ke you ke wu
+    if tf.contrib.learn.ModeKeys.TRAIN:
+        logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])  ###ke you ke wu
     
-    ###logits_softmax_output = (logits_message_exp + topic_words_mask*logits_topic_exp)/logits_exp_sum
+    ####################logits_softmax_output = (logits_message_exp + topic_words_mask*logits_topic_exp)/logits_exp_sum
+    ###logits_softmax_output = logits_topic_exp / logits_exp_sum
     logits_softmax_output = logits_message_exp / logits_exp_sum
     ###logits_softmax_output = (logits_message_exp + logits_topic_exp)/logits_exp_sum
     ###logits_softmax_output = tf.add(logits_message_exp, topic_words_mask*logits_topic_exp)/logits_exp_sum

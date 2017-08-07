@@ -37,7 +37,6 @@ def cross_entropy_sequence_loss(logits, targets, sequence_length):
   Returns:
     A tensor of shape [T, B] that contains the loss per example, per time step.
     
-  maybe [B,T]...
   """
   with tf.name_scope("cross_entropy_sequence_loss"):
       

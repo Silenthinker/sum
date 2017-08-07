@@ -179,6 +179,7 @@ class TrainSampleHook(TrainingHook):
   def begin(self):
     self._iter_count = 0
     self._global_step = tf.train.get_global_step()
+    self._source_emb = graph_utils.get_dict_from_collection("source_emb")
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
     self._source_emb = graph_utils.get_dict_from_collection("source_emb")
     self._logits = graph_utils.get_dict_from_collection("logits")
@@ -250,7 +251,10 @@ class TrainSampleHook(TrainingHook):
         self._loss["losses"],
         self._loss["loss"]
       ]
+    
+    
     source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, logits_message_nan,logits_topic_nan,topic_words_id_tensor, topic_word_location,logits_softmax_output,logits_exp_sum,topic_words_mask, logits_message_exp_nan,logits_topic_exp_nan,losses, loss = self._session.run(source_emb_logits_fetches)
+    ###source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, logits_message_nan,logits_topic_nan,topic_words_id_tensor, topic_word_location,losses, loss = self._session.run(source_emb_logits_fetches)
     ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
     ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
     """
@@ -264,20 +268,67 @@ class TrainSampleHook(TrainingHook):
         ###tf.logging.info("logits_softmax_output:{}".format(logits_softmax_output))
         ###tf.logging.info("logits_exp_sum:{}".format(logits_exp_sum))
     """
-    ###if step%500 == 0:
-    tf.logging.info("step:{}".format(step))
-    tf.logging.info("logits_message:{}".format(logits_message))
-    tf.logging.info("logits_topic:{}".format(logits_topic))
-    tf.logging.info("logits_output:{}".format(logits_output))  
-    tf.logging.info("logits_output sum:{}".format(np.sum(np.array(logits_output),axis=2)))
-    tf.logging.info("logits_exp_sum:{}".format(logits_exp_sum))
-    ###tf.logging.info("topic_words_mask:{}".format(topic_words_mask))
-    tf.logging.info("losses:{}".format(losses))
-    tf.logging.info("loss:{}".format(loss))
-    tf.logging.info("logits_message_nan:{}".format(logits_message_nan))
-    tf.logging.info("logits_topic_nan:{}".format(logits_topic_nan))
-    tf.logging.info("logits_message_exp_nan:{}".format(logits_message_exp_nan))
-    tf.logging.info("logits_topic_exp_nan:{}".format(logits_topic_exp_nan))
+    
+    
+    with open("log","a") as f:
+        f.write("step:{}".format(step))
+        f.write("source_message_emb:{}".format(source_message_emb))       
+        f.write("source_message_emb sum:{}".format(np.sum(np.array(source_message_emb),axis=2)))
+        f.write("source_message_emb max value:{}".format(np.amax(source_message_emb),axis=2))
+        f.write("source_message_emb min value:{}".format(np.amin(source_message_emb),axis=2))
+        f.write("source_message_emb mean value:{}".format(np.average(np.array(source_message_emb))))
+        f.write("source_message_emb std value:{}".format(np.std(np.array(source_message_emb))))
+        f.write("source_topic_emb:{}".format(source_topic_emb))
+        f.write("source_topic_emb sum:{}".format(np.sum(np.array(source_topic_emb),axis=2)))
+        f.write("source_topic_emb max value:{}".format(np.amax(source_topic_emb),axis=2))
+        f.write("source_topic_emb min value:{}".format(np.amin(source_topic_emb),axis=2))
+        f.write("source_topic_emb mean value:{}".format(np.average(np.array(source_topic_emb))))
+        f.write("source_topic_emb std value:{}".format(np.std(np.array(source_topic_emb))))
+        
+        f.write("logits_message:{}".format(logits_message))
+        f.write("logits_message max:{}".format(np.amax(logits_message)))
+        f.write("logits_topic:{}".format(logits_topic))
+        f.write("logits_topic max:{}".format(np.amax(logits_topic)))
+        f.write("logits_output:{}".format(logits_output))  
+        f.write("logits_output sum:{}".format(np.sum(np.array(logits_output),axis=2)))
+        f.write("logits_exp_sum:{}".format(logits_exp_sum))
+        ###f.write("topic_words_mask:{}".format(topic_words_mask))
+        f.write("losses:{}".format(losses))
+        f.write("loss:{}".format(loss))
+        f.write("logits_message_nan:{}".format(logits_message_nan))
+        f.write("logits_topic_nan:{}".format(logits_topic_nan))
+        f.write("logits_message_exp_nan:{}".format(logits_message_exp_nan))
+        f.write("logits_topic_exp_nan:{}".format(logits_topic_exp_nan))
+        
+    if step%100 == 0:     
+        tf.logging.info("step:{}".format(step))
+        tf.logging.info("source_message_emb:{}".format(source_message_emb))       
+        tf.logging.info("source_message_emb sum:{}".format(np.sum(np.array(source_message_emb),axis=2)))
+        tf.logging.info("source_message_emb max value:{}".format(np.amax(source_message_emb),axis=2))
+        tf.logging.info("source_message_emb min value:{}".format(np.amin(source_message_emb),axis=2))
+        tf.logging.info("source_message_emb mean value:{}".format(np.average(np.array(source_message_emb))))
+        tf.logging.info("source_message_emb std value:{}".format(np.std(np.array(source_message_emb))))
+        tf.logging.info("source_topic_emb:{}".format(source_topic_emb))
+        tf.logging.info("source_topic_emb sum:{}".format(np.sum(np.array(source_topic_emb),axis=2)))
+        tf.logging.info("source_topic_emb max value:{}".format(np.amax(source_topic_emb),axis=2))
+        tf.logging.info("source_topic_emb min value:{}".format(np.amin(source_topic_emb),axis=2))
+        tf.logging.info("source_topic_emb mean value:{}".format(np.average(np.array(source_topic_emb))))
+        tf.logging.info("source_topic_emb std value:{}".format(np.std(np.array(source_topic_emb))))
+        
+        tf.logging.info("logits_message:{}".format(logits_message))
+        tf.logging.info("logits_message max:{}".format(np.amax(logits_message)))
+        tf.logging.info("logits_topic:{}".format(logits_topic))
+        tf.logging.info("logits_topic max:{}".format(np.amax(logits_topic)))
+        tf.logging.info("logits_output:{}".format(logits_output))  
+        tf.logging.info("logits_output sum:{}".format(np.sum(np.array(logits_output),axis=2)))
+        tf.logging.info("logits_exp_sum:{}".format(logits_exp_sum))
+        ###tf.logging.info("topic_words_mask:{}".format(topic_words_mask))
+        tf.logging.info("losses:{}".format(losses))
+        tf.logging.info("loss:{}".format(loss))
+        tf.logging.info("logits_message_nan:{}".format(logits_message_nan))
+        tf.logging.info("logits_topic_nan:{}".format(logits_topic_nan))
+        tf.logging.info("logits_message_exp_nan:{}".format(logits_message_exp_nan))
+        tf.logging.info("logits_topic_exp_nan:{}".format(logits_topic_exp_nan))
     
         
     ##tf.logging.info("loss:{}".format(loss))
