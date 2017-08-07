@@ -131,6 +131,7 @@ class ConvEncoderFairseqTopic(Encoder):
     
     #####for topic embedding
     # Apply dropout to embeddings
+    source_topic_emb = tf.add(source_topic_emb,positions_embed)
     source_topic_emb = tf.contrib.layers.dropout(
         inputs=source_topic_emb,
         keep_prob=self.params["embedding_dropout_keep_prob"],

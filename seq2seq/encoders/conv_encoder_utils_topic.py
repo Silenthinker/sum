@@ -273,8 +273,11 @@ def topic_softmax(logits_message,logits_topic):  ###(exp(Vi)+exp(Ki)) / (sum(exp
 """
 
 def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki)) / (sum(exp(Vi))+sum(exp(Ki))) , if the word is a topic word in the mean while
-    logits_message_exp = tf.exp(logits_message)
-    logits_topic_exp = tf.exp(logits_topic)
+    logits_message_exp = tf.exp(logits_message*0.1)
+    logits_topic_exp = tf.exp(logits_topic*0.1)
+    
+    #logits_message_exp = tf.clip_by_norm(logits_message_exp,0.1)
+    #logits_topic_exp = tf.clip_by_norm(logits_topic_exp,0.1)
     
     
     logits_message_exp_nan=tf.is_nan(logits_message_exp)
@@ -305,7 +308,7 @@ def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki))
     if tf.contrib.learn.ModeKeys.TRAIN:
         logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])  ###ke you ke wu
     
-    logits_exp_sum = tf.clip_by_value(logits_exp_sum,10000,logits_exp_sum)
+    ###logits_exp_sum = tf.clip_by_value(logits_exp_sum,10000,logits_exp_sum)
     logits_softmax_output = (logits_message_exp + topic_words_mask*logits_topic_exp)/logits_exp_sum
     ###logits_softmax_output = logits_topic_exp / logits_exp_sum
     ###logits_softmax_output = logits_message_exp / logits_exp_sum
