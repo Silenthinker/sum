@@ -298,6 +298,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
       
        
     logits = _transpose_batch_time(next_layer)   
+    logits = topic_softmax(logits,logits,labels.get_shape().as_list()[0])
 
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32)
  

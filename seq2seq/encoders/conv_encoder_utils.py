@@ -202,4 +202,61 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     att_out = linear_mapping_weightnorm(att_out, decoder_hidden.get_shape().as_list()[-1], var_scope_name="linear_mapping_att_out")
   return att_out
 
+def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki)) / (sum(exp(Vi))+sum(exp(Ki))) , if the word is a topic word in the mean while
+    logits_message_exp = tf.exp(logits_message*0.1)
+    logits_topic_exp = tf.exp(logits_topic*0.1)
+    
+    #logits_message_exp = tf.clip_by_norm(logits_message_exp,0.1)
+    #logits_topic_exp = tf.clip_by_norm(logits_topic_exp,0.1)
+    
+    
+    logits_message_exp_nan=tf.is_nan(logits_message_exp)
+    logits_message_exp_nan=tf.where(logits_message_exp_nan)
+    
+    logits_topic_exp_nan=tf.is_nan(logits_topic_exp)
+    logits_topic_exp_nan=tf.where(logits_topic_exp_nan)
+            
+    logits_exp_sum = logits_message_exp   ##require sum of the last dim
+    ###logits_exp_sum = tf.concat([logits_message_exp, logits_topic_exp],-1)   ##require sum of the last dim
+    ###logits_exp_sum = tf.add(logits_message_exp, topic_words_mask*logits_topic_exp)   ##require sum of the last dim
+    logits_exp_sum = tf.reduce_sum(logits_exp_sum,-1)
+    logits_exp_sum = tf.expand_dims(logits_exp_sum,-1)
+    
+    vocab_size = logits_message.get_shape().as_list()[-1]
+    
+    if tf.contrib.learn.ModeKeys.TRAIN:
+        logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])  ###ke you ke wu
+    
+    ###logits_exp_sum = tf.clip_by_value(logits_exp_sum,10000,logits_exp_sum)
+    ###logits_softmax_output = (logits_message_exp + topic_words_mask*logits_topic_exp)/logits_exp_sum
+    ###logits_softmax_output = logits_topic_exp / logits_exp_sum
+    logits_softmax_output = logits_message_exp / logits_exp_sum
+    ###logits_softmax_output = (logits_message_exp + logits_topic_exp)/logits_exp_sum
+    ###logits_softmax_output = tf.add(logits_message_exp, topic_words_mask*logits_topic_exp)/logits_exp_sum
+        
+    return logits_softmax_output
 
+def cross_entropy_with_softmax_losses(logits,labels):
+    logits_size = logits.get_shape().as_list()[-1]
+    batch_size = labels.get_shape().as_list()[1]
+    logits_message, logits_topic = tf.split(logits,[tf.cast(logits_size/2,tf.int64),tf.cast(logits_size/2,tf.int64)],2)
+    vocab_size = logits_message.get_shape().as_list()[-1]    
+    targets_one_hot = tf.contrib.layers.one_hot_encoding(labels,num_classes=vocab_size) 
+    tf.logging.info("targets_one_hot shape:{}"+str(targets_one_hot))
+    logits_softmax_output = topic_softmax(logits_message,logits_topic,batch_size)
+    tf.logging.info("logits_softmax_output shape:{}"+str(logits_softmax_output))
+    losses = -tf.reduce_sum(targets_one_hot * tf.log(tf.clip_by_value(logits_softmax_output,1e-10,1.0)), -1) ###cross_entropy
+    ###losses = -tf.reduce_sum(targets_one_hot * tf.log(logits_softmax_output,1e-10,1.0), -1)
+    ###losses = tf.transpose(losses)
+    tf.logging.info("losses shape:{}"+str(losses))
+    return losses
+
+def cross_entropy(logits_softmax,labels):
+    vocab_size = logits_softmax.get_shape().as_list()[-1]    
+    targets_one_hot = tf.contrib.layers.one_hot_encoding(labels,num_classes=vocab_size) 
+    tf.logging.info("targets_one_hot shape:{}"+str(targets_one_hot))
+    losses = -tf.reduce_sum(targets_one_hot * tf.log(tf.clip_by_value(logits_softmax,1e-10,1.0)), -1)
+    ###losses = -tf.reduce_sum(targets_one_hot * tf.log(logits_softmax_output,1e-10,1.0), -1)
+    ###losses = tf.transpose(losses)
+    tf.logging.info("losses shape:{}"+str(losses))
+    return losses
