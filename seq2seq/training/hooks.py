@@ -67,6 +67,9 @@ class TrainingHook(tf.train.SessionRunHook, Configurable):
   @abstractstaticmethod
   def default_params():
     raise NotImplementedError()
+    
+  def after_create_session(self, session, coord):
+    self._session = session
 
 
 class MetadataCaptureHook(TrainingHook):
@@ -178,6 +181,8 @@ class TrainSampleHook(TrainingHook):
     self._iter_count = 0
     self._global_step = tf.train.get_global_step()
     self._pred_dict = graph_utils.get_dict_from_collection("predictions")
+    ##self._logits_infer = graph_utils.get_dict_from_collection("logits_infer")
+    self._logits_softmax = graph_utils.get_dict_from_collection("logits_softmax")
     # Create the sample directory
     if self._sample_dir is not None:
       gfile.MakeDirs(self._sample_dir)
@@ -196,6 +201,46 @@ class TrainSampleHook(TrainingHook):
   def after_run(self, _run_context, run_values):
     result_dict, step = run_values.results
     self._iter_count = step
+
+    
+    source_emb_logits_fetches = [
+        self._logits_softmax["logits_softmax_output"],
+        self._logits_softmax["logits_exp_sum"],
+        self._logits_softmax["logits_message_exp_nan"],
+        self._logits_softmax["logits_topic_exp_nan"],
+        self._logits_softmax["logits_message_exp"],
+        self._logits_softmax["logits_topic_exp"]
+      ]
+    
+    
+    logits_softmax_output,logits_exp_sum, logits_message_exp_nan,logits_topic_exp_nan,logits_message_exp,logits_topic_exp = self._session.run(source_emb_logits_fetches)
+    ###source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, logits_message_nan,logits_topic_nan,topic_words_id_tensor, topic_word_location,losses, loss = self._session.run(source_emb_logits_fetches)
+    ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
+    ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
+    
+    
+    with open("log","a") as f:
+        f.write("step:{}".format(step))
+    
+        f.write("logits_exp_sum:{}".format(logits_exp_sum))
+        f.write("logits_exp_sum max:{}".format(np.amax(logits_exp_sum)))
+        f.write("logits_exp_sum min:{}".format(np.amin(logits_exp_sum)))
+        f.write("logits_message_exp:{}".format(logits_message_exp))
+        f.write("logits_topic_exp:{}".format(logits_topic_exp))
+        f.write("logits_message_exp max:{}".format(np.amax(logits_message_exp)))
+        f.write("logits_topic_exp max:{}".format(np.amax(logits_topic_exp)))
+        ###f.write("topic_words_mask:{}".format(topic_words_mask))
+        f.write("logits_message_exp_nan:{}".format(logits_message_exp_nan))
+        f.write("logits_topic_exp_nan:{}".format(logits_topic_exp_nan))
+        
+    if step%100 == 0:     
+        tf.logging.info("step:{}".format(step))
+
+        tf.logging.info("logits_exp_sum:{}".format(logits_exp_sum))
+        ###tf.logging.info("topic_words_mask:{}".format(topic_words_mask))
+        tf.logging.info("logits_message_exp_nan:{}".format(logits_message_exp_nan))
+        tf.logging.info("logits_topic_exp_nan:{}".format(logits_topic_exp_nan))
+
 
     if not self._should_trigger:
       return None

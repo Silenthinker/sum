@@ -20,6 +20,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from seq2seq import graph_utils
+
 import tensorflow as tf
 
 def parse_list_or_default(params_str, number, default_val, delimitor=','):
@@ -233,6 +235,15 @@ def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki))
     logits_softmax_output = logits_message_exp / logits_exp_sum
     ###logits_softmax_output = (logits_message_exp + logits_topic_exp)/logits_exp_sum
     ###logits_softmax_output = tf.add(logits_message_exp, topic_words_mask*logits_topic_exp)/logits_exp_sum
+    
+    graph_utils.add_dict_to_collection({
+      "logits_message_exp": logits_message_exp, 
+      "logits_topic_exp": logits_topic_exp,
+      "logits_message_exp_nan":logits_message_exp_nan,
+      "logits_topic_exp_nan":logits_topic_exp_nan,
+      "logits_exp_sum":logits_exp_sum,
+      "logits_softmax_output": logits_softmax_output,
+      }, "logits_softmax")
         
     return logits_softmax_output
 
