@@ -9,7 +9,7 @@ export DEV_SOURCES=${DATA_PATH}/valid.art
 export DEV_TARGETS=${DATA_PATH}/valid.sum
 export TEST_SOURCES=${DATA_PATH}/test.art
 export TEST_TARGETS=${DATA_PATH}/test.sum
-export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716
+export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716_
 
 export TRAIN_STEPS=1000000
 

@@ -10,6 +10,7 @@ export DEV_SOURCES=${DATA_PATH}/valid.art
 export DEV_TARGETS=${DATA_PATH}/valid.sum
 export TEST_SOURCES=${DATA_PATH}/test.art
 export TEST_TARGETS=${DATA_PATH}/test.sum
+export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716_
 
 export TRAIN_STEPS=1000000
 
@@ -23,7 +24,8 @@ python -m bin.train \
       ./example_configs/text_metrics_bpe.yml" \
   --model_params "
       vocab_source: $VOCAB_SOURCE
-      vocab_target: $VOCAB_TARGET" \
+      vocab_target: $VOCAB_TARGET
+      topic_model: $TOPIC_MODEL" \
   --input_pipeline_train "
     class: ParallelTextInputPipelineFairseq
     params:
