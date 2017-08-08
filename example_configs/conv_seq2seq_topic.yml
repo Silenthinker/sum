@@ -15,7 +15,7 @@ model_params:
   optimizer.params:
     momentum: 0.99
     use_nesterov: True     
-  optimizer.learning_rate: 0.5
+  optimizer.learning_rate: 0.1
   optimizer.clip_gradients: 0.1
   optimizer.lr_decay_steps: 1000
   source.max_seq_len: 200
