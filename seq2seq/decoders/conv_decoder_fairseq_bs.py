@@ -30,6 +30,7 @@ from tensorflow.python.util import nest  # pylint: disable=E0611
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import math_ops
 
+from seq2seq import graph_utils
 from seq2seq.graph_module import GraphModule
 from seq2seq.configurable import Configurable
 from seq2seq.contrib.seq2seq.decoder import Decoder, dynamic_decode
@@ -123,6 +124,7 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
         "position_embeddings.combiner_fn": "tensorflow.add",
         "max_decode_length": 49,
         "nout_embed": 256,
+        ###"topic_model.path":"",
     }
  
   @property
@@ -254,6 +256,7 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
     
 
   def infer_conv_block(self, enc_output, input_embed):
+    tf.logging.info("infer_conv_block bs")
     # Apply dropout to embeddings
     input_embed = tf.contrib.layers.dropout(
         inputs=input_embed,
@@ -261,23 +264,54 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
         is_training=self.mode == tf.contrib.learn.ModeKeys.INFER)
      
     next_layer = self.conv_block(enc_output, input_embed, False)
-    shape = next_layer.get_shape().as_list()  
+      
+    ###split message and topic information 
+    next_layer_size = next_layer.get_shape().as_list()[-1]
+    next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
+      
+    ###load ids tensor of topic words
+    topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]
+
+    ###shape = next_layer.get_shape().as_list()
+    ###logits = tf.reshape(next_layer, [-1,shape[-1]])       
+    shape_message = next_layer_message.get_shape().as_list()
+    logits_message = tf.reshape(next_layer_message, [-1,shape_message[-1]]) 
+    shape_topic = next_layer_topic.get_shape().as_list()
+    logits_topic = tf.reshape(next_layer_topic, [-1,shape_topic[-1]])
     
-    logits = tf.reshape(next_layer, [-1,shape[-1]])   
+    vocab_size = logits_topic.get_shape().as_list()[-1]
+    topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
+    topic_word_location = tf.reduce_sum(topic_word_onehot,0)
+    topic_word_location = tf.expand_dims(topic_word_location, 0)
+    batch_size = self.config.beam_width##########################
+    topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
+    
+    logits = tf.add(logits_message,logits_topic*topic_words_mask)
+    ###logits=tf.concat([logits_message,logits_topic],-1)
+            
+    graph_utils.add_dict_to_collection({
+      "logits_message_infer": logits_message, 
+      "logits_topic_infer": logits_topic,
+      "logits":logits
+      }, "logits_infer")
+    
     return logits
 
   def conv_block(self, enc_output, input_embed, is_train=True):
     with tf.variable_scope("decoder_cnn"):    
       next_layer = input_embed
       if self.params["cnn.layers"] > 0:
-        nhids_list = parse_list_or_default(self.params["cnn.nhids"], self.params["cnn.layers"], self.params["cnn.nhid_default"])
-        kwidths_list = parse_list_or_default(self.params["cnn.kwidths"], self.params["cnn.layers"], self.params["cnn.kwidth_default"])
+        nhids_list = parse_list_or_default(self.params["cnn.nhids"], self.params["cnn.layers"], self.params["cnn.nhid_default"])    ###[256,256,256]
+        kwidths_list = parse_list_or_default(self.params["cnn.kwidths"], self.params["cnn.layers"], self.params["cnn.kwidth_default"])    ###[3,3,3]
         
         # mapping emb dim to hid dim
         next_layer = linear_mapping_weightnorm(next_layer, nhids_list[0], dropout=self.params["embedding_dropout_keep_prob"], var_scope_name="linear_mapping_before_cnn")      
          
         next_layer = conv_decoder_stack(input_embed, enc_output, next_layer, nhids_list, kwidths_list, {'src':self.params["embedding_dropout_keep_prob"], 'hid': self.params["nhid_dropout_keep_prob"]}, mode=self.mode)
-    
+        
+    next_layer_size = next_layer.get_shape().as_list()[-1]      #k
+    next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
+    """    
     with tf.variable_scope("softmax"):
       if is_train:
         next_layer = linear_mapping_weightnorm(next_layer, self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn")
@@ -289,8 +323,27 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
         is_training=is_train)
      
       next_layer = linear_mapping_weightnorm(next_layer, self.vocab_size, in_dim=self.params["nout_embed"], dropout=self.params["out_dropout_keep_prob"], var_scope_name="logits_before_softmax")
+   """
+    with tf.variable_scope("softmax"):
+      if is_train:
+        next_layer_message = linear_mapping_weightnorm(next_layer_message, self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_message")
+        next_layer_topic = linear_mapping_weightnorm(next_layer_topic, self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_topic")
+      else:         
+        next_layer_message = linear_mapping_weightnorm(next_layer_message[:,-1:,:], self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_message")
+        next_layer_topic = linear_mapping_weightnorm(next_layer_topic[:,-1:,:], self.params["nout_embed"], var_scope_name="linear_mapping_after_cnn_topic")
+      next_layer = tf.contrib.layers.dropout(
+        inputs=next_layer,
+        keep_prob=self.params["out_dropout_keep_prob"],
+        is_training=is_train)
+     
+      ###next_layer = linear_mapping_weightnorm(next_layer, self.vocab_size, in_dim=self.params["nout_embed"], dropout=self.params["out_dropout_keep_prob"], var_scope_name="logits_before_softmax")
+      next_layer_message = linear_mapping_weightnorm(next_layer_message, self.vocab_size, in_dim=self.params["nout_embed"], dropout=self.params["out_dropout_keep_prob"], var_scope_name="logits_before_softmax_message")
+      next_layer_topic = linear_mapping_weightnorm(next_layer_topic, self.vocab_size, in_dim=self.params["nout_embed"], dropout=self.params["out_dropout_keep_prob"], var_scope_name="logits_before_softmax_topic")
       
-    return next_layer 
+      next_layer_out = tf.concat([next_layer_message,next_layer_topic],2)
+      
+    ###return next_layer
+    return next_layer_out
  
   def init_params_in_loop(self):
     with tf.variable_scope("decoder"):
@@ -303,6 +356,7 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
     print(name, tensor.get_shape().as_list()) 
   
   def conv_decoder_infer(self):
+    tf.logging.info("decoder infer")
     maximum_iterations = self.params["max_decode_length"]
     
     self.init_params_in_loop()
@@ -316,27 +370,56 @@ class ConvDecoderFairseqBS(Decoder, GraphModule, Configurable):
     return outputs, final_state
 
   def conv_decoder_train(self, enc_output, labels, sequence_length):
+    tf.logging.info("decoder train")
     embed_size = labels.get_shape().as_list()[-1]
     if self.params["position_embeddings.enable"]:
       positions_embed = self._create_position_embedding(
-          lengths=sequence_length,
+          lengths=sequence_length,   ###sequence_length  128
           maxlen=tf.shape(labels)[1])
-      labels = self._combiner_fn(labels, positions_embed)
+      labels = self._combiner_fn(labels, positions_embed)   ###labels (128, 15, 256)   # [B, T, embed_size]
      
     # Apply dropout to embeddings
-    inputs = tf.contrib.layers.dropout(
+    inputs = tf.contrib.layers.dropout(      ###inputs shape (128,15,256)  # [B, T, embed_size]
         inputs=labels,
         keep_prob=self.params["embedding_dropout_keep_prob"],
         is_training=self.mode == tf.contrib.learn.ModeKeys.TRAIN)
     
-    next_layer = self.conv_block(enc_output, inputs, True)
-      
+    next_layer = self.conv_block(enc_output, inputs, True)   ###(128, 16, 31114)  # [B, T, V]
+ 
+    ###split message and topic information  
+    next_layer_size = next_layer.get_shape().as_list()[-1]
+    next_layer_message, next_layer_topic = tf.split(next_layer,[tf.cast(next_layer_size/2,tf.int64),tf.cast(next_layer_size/2,tf.int64)],2)
+    
+    topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]
        
-    logits = _transpose_batch_time(next_layer)   
+    #####logits = _transpose_batch_time(next_layer)    ###logits:(13, 128, 31114)   # [T, B, V]
+    logits_message = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
+    logits_topic = _transpose_batch_time(next_layer_message)    ###logits:(13, 128, 31114)   # [T, B, V]
+    
+    vocab_size = logits_message.get_shape().as_list()[-1]
+    topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
+    topic_word_location = tf.reduce_sum(topic_word_onehot,0)
+    topic_word_location = tf.expand_dims(topic_word_location, 0)
+    batch_size = tf.shape(sequence_length)[0]
+    topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
+
+    logits_message = tf.nn.softmax(logits_message)
+    logits_topic = tf.nn.softmax(logits_topic)
+    
+    graph_utils.add_dict_to_collection({
+      "logits_message": logits_message, 
+      "logits_topic": logits_topic
+      }, "logits")
+    
+    logits = tf.add(logits_message,logits_topic*topic_words_mask)
+    ###logits = logits_message
 
     sample_ids = tf.cast(tf.argmax(logits, axis=-1), tf.int32)
+    
+    conv_dec_dict = {"enc_output":enc_output, "labels:":labels,"sequence_length":sequence_length,"decoder inputs":inputs,"next_layer":next_layer,"logits":logits}
+    graph_utils.add_dict_to_collection(conv_dec_dict,"conv_dec_dict")
  
-    return ConvDecoderOutput(logits=logits, predicted_ids=sample_ids)
+    return ConvDecoderOutput(logits=logits_message, predicted_ids=sample_ids)
 
   def _build(self, enc_output, labels=None, sequence_length=None):
     

@@ -21,4 +21,4 @@ from seq2seq.encoders.image_encoder import *
 from seq2seq.encoders.pooling_encoder import PoolingEncoder
 from seq2seq.encoders.conv_encoder import ConvEncoder
 from seq2seq.encoders.conv_encoder_fairseq import ConvEncoderFairseq
-from seq2seq.encoders.conv_encoder_fairseq_topic import ConvEncoderFairseqTopic
+##from seq2seq.encoders.conv_encoder_fairseq_topic import ConvEncoderFairseqTopic

@@ -70,8 +70,10 @@ class ConvSeq2Seq(Seq2SeqModel):
         "vocab_source": "",
         "vocab_target": "", 
         "optimizer.name": "Momentum",
+        ###"optimizer.name": "Adam",
         "optimizer.learning_rate": 0.25,
         "optimizer.params": {"momentum": 0.99, "use_nesterov": True}, # Arbitrary parameters for the optimizer
+        ###"optimizer.params": {"beta1": 0.9, "beta2": 0.999},
         #"optimizer.params": { "epsilon": 0.0000008}, # Arbitrary parameters for the optimizer
         "optimizer.lr_decay_type": "exponential_decay",
         "optimizer.lr_decay_steps": 5000,  # one epoch steps

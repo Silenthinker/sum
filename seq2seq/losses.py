@@ -21,7 +21,7 @@ from __future__ import print_function
 import tensorflow as tf
 from seq2seq import graph_utils
 
-from seq2seq.encoders.conv_encoder_utils_topic import *
+from seq2seq.encoders.conv_encoder_utils import *
 
 
 def cross_entropy_sequence_loss(logits, targets, sequence_length):
