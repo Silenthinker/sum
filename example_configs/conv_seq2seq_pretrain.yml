@@ -14,11 +14,15 @@ model_params:
     cnn.layers: 6
     cnn.nhids: 256,256,256,256,256,256
     cnn.kwidths: 3,3,3,3,3,3
-  optimizer.name: Adam
+  optimizer.name: Momentum
   optimizer.params:
-    beta1: 0.9
-    beta2: 0.999     
-  optimizer.learning_rate: 0.0001
+    momentum: 0.99
+    use_nesterov: True   
+  ###optimizer.name: Adam
+  ###optimizer.params:
+  ###  beta1: 0.9
+  ###  beta2: 0.999     
+  optimizer.learning_rate: 0.25
   optimizer.clip_gradients: 0.1
   optimizer.lr_decay_steps: 1000
   source.max_seq_len: 200
