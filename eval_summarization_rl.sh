@@ -1,11 +1,21 @@
 export PYTHONIOENCODING=UTF-8
 
-DATA_PATH="$(pwd)/sum_data"
+DATA_PATH="$(pwd)/data/giga_small_small"
 TEST_SOURCES=${DATA_PATH}
 MODEL_DIR="$(pwd)/sum_conv_seq2seq_rl"
 ###DATA_PATH=$1
 ###TEST_SOURCES=$2
 ###MODEL_DIR=$3
+
+export VOCAB_SOURCE=${DATA_PATH}/vocab.50k.art
+export VOCAB_TARGET=${DATA_PATH}/vocab.50k.sum
+export TRAIN_SOURCES=${DATA_PATH}/train.art.small
+export TRAIN_TARGETS=${DATA_PATH}/train.sum.small
+export DEV_SOURCES=${DATA_PATH}/valid.art.small
+export DEV_TARGETS=${DATA_PATH}/valid.sum.small
+export TEST_SOURCES=${DATA_PATH}/test.art.small
+export TEST_TARGETS=${DATA_PATH}/test.sum.small
+export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716_
 
 ##export PRED_DIR=${DATA_PATH}/summary
 export PRED_DIR=${MODEL_DIR}/summary
@@ -65,3 +75,10 @@ echo "Greedy result (tok.clean):"
 python seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir $DATA_PATH/reference/tok.clean -sum_dir ${GREEDY_DIR}
 echo "Beam result (tok.clean):"
 python seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir $DATA_PATH/reference/tok.clean -sum_dir ${BEAM_DIR}
+
+"""
+(tensorflow) nlp@nlp-workstation:/nlp/lilianwang/conv_seq2seq_master$ python seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir ./sum_conv_seq2seq_rl/reference -sum_dir ./sum_conv_seq2seq_rl/summary/greedy/
+{'ROUGE-1': 0.82474, 'ROUGE-2': 0.69474, 'ROUGE-L': 0.82474, 'ROUGE-SU4': 0.72}
+(tensorflow) nlp@nlp-workstation:/nlp/lilianwang/conv_seq2seq_master$ python seq2seq/metrics/pythonrouge/rouge_scorer.py -ref_dir ./sum_conv_seq2seq_rl/reference -sum_dir ./sum_conv_seq2seq_rl/summary/beam/
+{'ROUGE-1': 0.76288, 'ROUGE-2': 0.61053, 'ROUGE-L': 0.76288, 'ROUGE-SU4': 0.62545}
+"""

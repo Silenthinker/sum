@@ -435,7 +435,7 @@ class Seq2SeqModel(ModelBase):
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
       decoder_outputs, _ = self.decode(encoder_output, features, labels) 
     else:
-      decoder_outputs, _ = self.decode(encoder_output, features, labels, is_rl) # tuple of len 3
+      decoder_outputs = self.decode(encoder_output, features, labels, is_rl) # tuple of len 3
 
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
       loss = None

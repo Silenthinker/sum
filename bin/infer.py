@@ -60,7 +60,7 @@ FLAGS = tf.flags.FLAGS
 def main(_argv):
   """Program entry point.
   """
-  os.environ["CUDA_VISIBLE_DEVICES"]= "6,7"
+  ##os.environ["CUDA_VISIBLE_DEVICES"]= "0"
   # Load flags from config file
   if FLAGS.config_path:
     with gfile.GFile(FLAGS.config_path) as config_file:
