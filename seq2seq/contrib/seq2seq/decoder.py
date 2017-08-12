@@ -32,6 +32,7 @@ import abc
 
 import six
 
+from tensorflow import stack, zeros, TensorArray
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
@@ -80,11 +81,12 @@ def _transpose_batch_time(x):
 @six.add_metaclass(abc.ABCMeta)
 class Decoder(object):
   """An RNN Decoder abstract interface object."""
-
+  '''
   @property
   def batch_size(self):
     """The batch size of the inputs returned by `sample`."""
     raise NotImplementedError
+  '''
 
   @property
   def output_size(self):
@@ -144,9 +146,11 @@ def dynamic_decode(decoder,
                    output_time_major=False,
                    impute_finished=False,
                    maximum_iterations=None,
-                   parallel_iterations=32,
+                   parallel_iterations=64,
                    swap_memory=False,
-                   scope=None):
+                   scope=None,
+                   sample=False,
+                   batch_size=None):
   """Perform dynamic decoding with `decoder`.
 
   Args:
@@ -166,7 +170,7 @@ def dynamic_decode(decoder,
     parallel_iterations: Argument passed to `tf.while_loop`.
     swap_memory: Argument passed to `tf.while_loop`.
     scope: Optional variable scope to use.
-
+    * sample: False for greedy generation [False]
   Returns:
     `(final_outputs, final_state)`.
 
@@ -177,7 +181,8 @@ def dynamic_decode(decoder,
   if not isinstance(decoder, Decoder):
     raise TypeError("Expected decoder to be type Decoder, but saw: %s" %
                     type(decoder))
-
+  if batch_size is None:
+    batch_size = decoder.batch_size
   with variable_scope.variable_scope(scope or "decoder") as varscope:
     # Properly cache variable values inside the while_loop
     if varscope.caching_device is None:
@@ -189,11 +194,11 @@ def dynamic_decode(decoder,
       if maximum_iterations.get_shape().ndims != 0:
         raise ValueError("maximum_iterations must be a scalar")
 
-    initial_finished, initial_inputs, initial_state = decoder.initialize()
-
+    initial_finished, initial_inputs, initial_state = decoder.initialize(batch_size)
+    log_prob_sum = zeros([batch_size])
     zero_outputs = _create_zero_outputs(decoder.output_size,
                                         decoder.output_dtype,
-                                        decoder.batch_size)
+                                        batch_size)
 
     if maximum_iterations is not None:
       initial_finished = math_ops.logical_or(
@@ -214,16 +219,16 @@ def dynamic_decode(decoder,
           dtype=d,
           size=0,
           dynamic_size=True,
-          element_shape=_shape(decoder.batch_size, s))
+          element_shape=_shape(batch_size, s))
 
     initial_outputs_ta = nest.map_structure(_create_ta, decoder.output_size,
                                             decoder.output_dtype)
 
     def condition(unused_time, unused_outputs_ta, unused_state, unused_inputs,
-                  finished):
+                  finished, log_prob_sum):
       return math_ops.logical_not(math_ops.reduce_all(finished))
 
-    def body(time, outputs_ta, state, inputs, finished):
+    def body(time, outputs_ta, state, inputs, finished, log_prob_sum):
       """Internal while_loop body.
 
       Args:
@@ -237,8 +242,11 @@ def dynamic_decode(decoder,
         `(time + 1, outputs_ta, next_state, next_inputs, next_finished)`.
       """
       (next_outputs, decoder_state, next_inputs,
-       decoder_finished) = decoder.step(time, inputs, state)
+       decoder_finished, log_prob) = decoder.step(time, inputs, state, sample=sample, batch_size=batch_size) # decoder_finished: [B]
+      # finished: [B] accumulates the status until the execution of decoder.step(...)
+      log_prob_sum = log_prob_sum + math_ops.multiply(log_prob, math_ops.to_float(math_ops.logical_not(finished))) # only add non-finished part
       next_finished = math_ops.logical_or(decoder_finished, finished)
+      next_finished.set_shape([batch_size])
       if maximum_iterations is not None:
         next_finished = math_ops.logical_or(
             next_finished, time + 1 >= maximum_iterations)
@@ -274,23 +282,38 @@ def dynamic_decode(decoder,
 
       outputs_ta = nest.map_structure(lambda ta, out: ta.write(time, out),
                                       outputs_ta, emit)
-      return (time + 1, outputs_ta, next_state, next_inputs, next_finished)
+      return (time + 1, outputs_ta, next_state, next_inputs, next_finished, log_prob_sum)
 
     res = control_flow_ops.while_loop(
         condition,
         body,
         loop_vars=[
             initial_time, initial_outputs_ta, initial_state, initial_inputs,
-            initial_finished
+            initial_finished, log_prob_sum
         ],
         parallel_iterations=parallel_iterations,
         swap_memory=swap_memory)
 
     final_outputs_ta = res[1]
     final_state = res[2]
+    log_prob_sum = res[5]
+    '''
+    # For early finish, pad log_probs to full length
+    def pad_condition(time, log_probs):
+      return math_ops.logical_not(time + 1 >= maximum_iterations)
 
+    def pad_body(time, log_probs):
+      return (time + 1, log_probs.write(time, zeros([batch_size])))
+
+    final_time, logprobs = control_flow_ops.while_loop(
+        pad_condition,
+        pad_body,
+        loop_vars=[res[0], log_probs]
+      )
+    '''
     final_outputs = nest.map_structure(lambda ta: ta.stack(), final_outputs_ta)
     if not output_time_major:
       final_outputs = nest.map_structure(_transpose_batch_time, final_outputs)
 
-  return final_outputs, final_state
+    # concatenate probs to tensor
+  return final_outputs, final_state, log_prob_sum

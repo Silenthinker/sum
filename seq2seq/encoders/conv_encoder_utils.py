@@ -226,7 +226,8 @@ def make_attention(target_embed, encoder_output, decoder_hidden, layer_idx):
     ######
     att_score_message_share = tf.matmul(dec_rep, encoder_output_a_message, transpose_b=True)  #M*N1*K  ** M*N2*K  --> M*N1*N2
     att_score_message = tf.nn.softmax(att_score_message_share)        
-  
+
+
     length_message = tf.cast(tf.shape(encoder_output_c_message), tf.float32)
 
     att_out_message = tf.matmul(att_score_message, encoder_output_c_message) * length_message[1] * tf.sqrt(1.0/length_message[1])    #M*N1*N2  ** M*N2*K   --> M*N1*k     

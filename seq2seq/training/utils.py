@@ -296,3 +296,6 @@ def create_input_fn(pipeline,
       return features_batch, labels_batch
 
   return input_fn
+
+# def compute_rl_loss():
+  

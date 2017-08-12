@@ -40,6 +40,7 @@ from seq2seq.metrics import metric_specs
 from seq2seq.training import hooks
 from seq2seq.training import utils as training_utils
 
+
 tf.flags.DEFINE_string("config_paths", "",
                        """Path to a YAML configuration files defining FLAG
                        values. Multiple files can be separated by commas.
@@ -221,7 +222,7 @@ def create_experiment(output_dir):
 def main(_argv):
   """The entrypoint for the script"""
 
-  os.environ["CUDA_VISIBLE_DEVICES"]= "0"
+  ##os.environ["CUDA_VISIBLE_DEVICES"]= "0"
 
   # Parse YAML FLAGS
   FLAGS.hooks = _maybe_load_yaml(FLAGS.hooks)
@@ -279,5 +280,6 @@ def main(_argv):
 
 
 if __name__ == "__main__":
+  os.environ["CUDA_VISIBLE_DEVICES"]= '0,1'  
   tf.logging.set_verbosity(tf.logging.INFO)
   tf.app.run()

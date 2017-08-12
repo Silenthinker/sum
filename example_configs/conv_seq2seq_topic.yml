@@ -1,5 +1,8 @@
 model: ConvSeq2Seq
 model_params:
+  enable_rl: False
+  enable_topic: True
+  lbd: 0.99
   embedding.dim: 256
   encoder.class: seq2seq.encoders.ConvEncoderFairseq
   encoder.params:
@@ -14,12 +17,14 @@ model_params:
   optimizer.name: Momentum
   optimizer.params:
     momentum: 0.99
-    use_nesterov: True     
+    use_nesterov: True   
+  ###optimizer.name: Adam
+  ###optimizer.params:
+  ###  beta1: 0.9
+  ###  beta2: 0.999    
   optimizer.learning_rate: 0.25
   optimizer.clip_gradients: 0.1
   optimizer.lr_decay_steps: 1000
   source.max_seq_len: 200
   source.reverse: false
   target.max_seq_len: 30
-  is_topic: 1
-  ###topic_model.path: "/nlp/lilianwang/conv_seq2seq_master/data/giga_lda_model0716"

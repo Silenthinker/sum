@@ -72,9 +72,9 @@ class ConvSeq2Seq(Seq2SeqModel):
         "optimizer.name": "Momentum",
         ###"optimizer.name": "Adam",
         "optimizer.learning_rate": 0.25,
-        "optimizer.params": {"momentum": 0.99, "use_nesterov": True}, # Arbitrary parameters for the optimizer
         ###"optimizer.params": {"beta1": 0.9, "beta2": 0.999},
-        #"optimizer.params": { "epsilon": 0.0000008}, # Arbitrary parameters for the optimizer
+        "optimizer.params": {"momentum": 0.99, "use_nesterov": True}, # Arbitrary parameters for the optimizer
+        #####"optimizer.params": { "epsilon": 0.0000008}, # Arbitrary parameters for the optimizer
         "optimizer.lr_decay_type": "exponential_decay",
         "optimizer.lr_decay_steps": 5000,  # one epoch steps
         "optimizer.lr_decay_rate": 0.9,  
@@ -86,7 +86,7 @@ class ConvSeq2Seq(Seq2SeqModel):
         "optimizer.clip_embed_gradients": 5,
         "optimizer.sync_replicas": 0,
         "optimizer.sync_replicas_to_aggregate": 0,
-        "is_topic": 1,
+        "enable_topic": False,
         
 })
     return params
@@ -150,12 +150,12 @@ class ConvSeq2Seq(Seq2SeqModel):
         pos_embedding=self.target_pos_embedding_fairseq(),
         start_tokens=self.target_vocab_info.special_vocab.SEQUENCE_END)
 
-  def _decode_train(self, decoder, _encoder_output, _features, labels):
+  def _decode_train(self, decoder, _encoder_output, _features, labels, rl):
     """Runs decoding in training mode"""
     target_embedded = tf.nn.embedding_lookup(decoder.target_embedding,
                                              labels["target_ids"])
 
-    return decoder(_encoder_output, labels=target_embedded[:,:-1], sequence_length=labels["target_len"]-1)
+    return decoder(_encoder_output, labels=target_embedded[:,:-1], sequence_length=labels["target_len"]-1, rl=rl )
 
   def _decode_infer(self, decoder, _encoder_output, features, labels):
     """Runs decoding in inference mode"""
@@ -201,19 +201,19 @@ class ConvSeq2Seq(Seq2SeqModel):
       }, "source_emb")
     
     encoder_fn = self.encoder_class(self.params["encoder.params"], self.mode, self.source_pos_embedding_fairseq())
-    if self.params["is_topic"] == 1:
+    if self.params["enable_topic"]:
         return encoder_fn(source_embedded, features["source_len"], source_topic_emb)
     else:
         return encoder_fn(source_embedded, features["source_len"])
 
   @templatemethod("decode")
-  def decode(self, encoder_output, features, labels):
+  def decode(self, encoder_output, features, labels, rl=True):
     
     decoder = self._create_decoder(encoder_output, features, labels)
-     
+    self.decoder = decoder
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
       return self._decode_infer(decoder, encoder_output, features,
                                 labels)
     else:
       return self._decode_train(decoder, encoder_output, features,
-                                labels)
+                                labels, rl)

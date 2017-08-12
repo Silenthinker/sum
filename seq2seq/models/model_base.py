@@ -111,7 +111,9 @@ class ModelBase(Configurable):
         clip_gradients=self._clip_gradients,
         optimizer=optimizer,
         gradient_multipliers=gradient_multipliers,
-        summaries=["learning_rate", "loss", "gradients", "gradient_norm"])
+        # summaries=["learning_rate", "loss", "gradients", "gradient_norm"] # since loss_rl is dependent on reward and base_line, treat it elsewhere
+        summaries=["learning_rate"]
+        )
 
     return train_op
 
@@ -132,6 +134,8 @@ class ModelBase(Configurable):
         "optimizer.clip_gradients": 5.0,
         "optimizer.sync_replicas": 0,
         "optimizer.sync_replicas_to_aggregate": 0,
+        "enable_rl": True,
+        "lbd": 0.99
     }
 
   def batch_size(self, features, labels):

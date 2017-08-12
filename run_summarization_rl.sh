@@ -1,15 +1,15 @@
 export PYTHONIOENCODING=UTF-8
-export DATA_PATH="$(pwd)/sum_data"
+export DATA_PATH="$(pwd)/data/giga_small_small"
 
 export VOCAB_SOURCE=${DATA_PATH}/vocab.50k.art
 export VOCAB_TARGET=${DATA_PATH}/vocab.50k.sum
-export TRAIN_SOURCES=${DATA_PATH}/train.art
-export TRAIN_TARGETS=${DATA_PATH}/train.sum
-export DEV_SOURCES=${DATA_PATH}/valid.art
-export DEV_TARGETS=${DATA_PATH}/valid.sum
-export TEST_SOURCES=${DATA_PATH}/test.art
-export TEST_TARGETS=${DATA_PATH}/test.sum
-export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716
+export TRAIN_SOURCES=${DATA_PATH}/train.art.small
+export TRAIN_TARGETS=${DATA_PATH}/train.sum.small
+export DEV_SOURCES=${DATA_PATH}/valid.art.small
+export DEV_TARGETS=${DATA_PATH}/valid.sum.small
+export TEST_SOURCES=${DATA_PATH}/test.art.small
+export TEST_TARGETS=${DATA_PATH}/test.sum.small
+export TOPIC_MODEL="$(pwd)"/data/giga_lda_model0716_
 
 export TRAIN_STEPS=1000000
 

@@ -22,6 +22,7 @@ import collections
 
 import tensorflow as tf
 
+from seq2seq.metrics import score
 from seq2seq import graph_utils
 from seq2seq import losses as seq2seq_losses
 from seq2seq.contrib.seq2seq.decoder import _transpose_batch_time
@@ -46,6 +47,13 @@ class Seq2SeqModel(ModelBase):
     self.target_vocab_info = None
     if "vocab_target" in self.params and self.params["vocab_target"]:
       self.target_vocab_info = vocab.get_vocab_info(self.params["vocab_target"])
+    
+    """
+    enable_topic_encoder = self.params["encoder.class"] == "seq2seq.encoders.ConvEncoderFairseqTopic"
+    enable_topic_decoder = self.params["decoder.class"] == "seq2seq.decoders.ConvDecoderFairseqTopic"
+    assert(enable_topic_encoder == enable_topic_decoder, "Encoder and decoder incompatible!")
+    self.enable_topic = enable_topic_encoder
+    """
 
   @staticmethod
   def default_params():
@@ -117,6 +125,17 @@ class Seq2SeqModel(ModelBase):
       # Raw predicted tokens
       predictions["predicted_tokens"] = predicted_tokens
 
+    return predictions
+  def _create_predictions_from_list(self, decoder_output_list):
+    '''
+    Args:
+      decoder_output_list: list of ConvDecoderOutput, which is nameTuple that has fields "logits", "predicted_ids"
+    '''
+    predictions = {}
+    vocab_tables = graph_utils.get_dict_from_collection("vocab_tables")
+    target_id_to_vocab = vocab_tables["target_id_to_vocab"]
+    predicted_tokens_list = [target_id_to_vocab.lookup(tf.to_int64(output.predicted_ids)) for output in decoder_output_list]
+    predictions["predicted_token_list"] = predicted_tokens_list
     return predictions
 
   def batch_size(self, features, labels):
@@ -397,7 +416,7 @@ class Seq2SeqModel(ModelBase):
     losses = seq2seq_losses.cross_entropy_sequence_loss(
         logits=decoder_output.logits[:, :, :],
         targets=tf.transpose(labels["target_ids"][:, 1:], [1, 0]),
-        sequence_length=labels["target_len"] - 1)
+        sequence_length=labels["target_len"] - 1) # [T, B]
 
     # Calculate the average log perplexity
     loss = tf.reduce_sum(losses) / tf.to_float(
@@ -411,42 +430,110 @@ class Seq2SeqModel(ModelBase):
     return losses, loss
 
   def _build(self, features, labels, params):
+    if self.mode != tf.contrib.learn.ModeKeys.INFER:
+      is_rl = params["enable_rl"]
     # Pre-process features and labels
+
     ###features, labels = self._preprocess(features, labels)
     features, labels = self._preprocess_add_topics(features, labels)###
+    """
+    if self.enable_topic:
+      features, labels = self._preprocess_add_topics(features, labels)###
+    else:
+      features, labels = self._preprocess(features, labels)
+    """
+    # Obtain encoder output
 
     encoder_output = self.encode(features, labels)
-    decoder_output, _, = self.decode(encoder_output, features, labels)
+    
+    if self.mode == tf.contrib.learn.ModeKeys.INFER:
+      decoder_outputs, _ = self.decode(encoder_output, features, labels) 
+    else:
+      decoder_outputs = self.decode(encoder_output, features, labels, is_rl) # tuple of len 3
 
     if self.mode == tf.contrib.learn.ModeKeys.INFER:
       loss = None
       train_op = None
       
       predictions = self._create_predictions(
-          decoder_output=decoder_output, features=features, labels=labels)
+          decoder_output=decoder_outputs, features=features, labels=labels)
+      graph_utils.add_dict_to_collection(predictions, "predictions")
     else:
-      losses, loss = self.compute_loss(decoder_output, features, labels)
+      if is_rl:
+        _names = ["train", "greedy", "sampled"]
+        decoder_outputs_dict = dict(zip(_names, decoder_outputs)) # dict
+        log_prob_sum = decoder_outputs_dict["sampled"]["log_prob_sum"]
+        # log_probs = tf.transpose(log_probs_arr.stack(), perm=[1, 0]) # [B, T]
+        losses, loss = self.compute_loss(decoder_outputs_dict["train"]["outputs"], features, labels)
 
-      train_op = None
-      if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
-        gradient_multipliers = {}
-        # multiply the gradient by 1.0/(2*#att_layer)       
-        for i in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='model/conv_seq2seq/encode'):
-          if 'encode/W' in i.name or 'encode/pos' in i.name:
-            continue
-          tf.logging.info("tensor %s, name is %s", i, i.name)
-          gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
-        #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
-        train_op = self._build_train_op(loss, gradient_multipliers=gradient_multipliers)
-      
-      predictions = self._create_predictions(
-          decoder_output=decoder_output,
-          features=features,
-          labels=labels,
-          losses=losses)
+        predictions_dict = {k:self._create_predictions(decoder_output=v["outputs"],
+                        features=features,
+                        labels=labels,
+                        losses=losses) for k, v in decoder_outputs_dict.items()}
+        predictions = predictions_dict["train"]
+        
+        # We add "useful" tensors to the graph collection so that we
+        # can easly find them in our hooks/monitors.
+        [graph_utils.add_dict_to_collection(v, "predictions_"+k) for k, v in  predictions_dict.items()]
 
-    # We add "useful" tensors to the graph collection so that we
-    # can easly find them in our hooks/monitors.
-    graph_utils.add_dict_to_collection(predictions, "predictions")
+        
+        rewards = tf.placeholder(tf.float32, [None])
+        base_line = tf.placeholder(tf.float32, [None])
+        diff  =  base_line - rewards # [B]
+        # diff  =  - rewards # [B]
 
+        norms = tf.placeholder(tf.float32, shape=[None])
+        norm = tf.reduce_sum(norms)
+
+        log_prob_sum_ = tf.placeholder(tf.float32, [None])
+        log_probs_mean = tf.reduce_sum(log_prob_sum_) / norm
+
+        sum_loss = tf.reduce_sum(
+          tf.multiply(
+            log_prob_sum_, diff)
+          ) / norm # x * y element-wise, give [T, B] log_prob_sum
+        lbd = params["lbd"]
+        loss_rl = lbd * sum_loss + (1 - lbd) * loss
+      else:
+        losses, loss = self.compute_loss(decoder_outputs["outputs"], features, labels)
+
+      gradient_multipliers = {}
+      # multiply the gradient by 1.0/(2*#att_layer)       
+      for i in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='model/conv_seq2seq/encode'):
+        if 'encode/W' in i.name or 'encode/pos' in i.name:
+          continue
+        tf.logging.info("tensor %s, name is %s", i, i.name)
+        gradient_multipliers[i] = 1.0/(2*self.params["decoder.params"]["cnn.layers"])
+      #tf.logging.info("gradient_multipliers %s",gradient_multipliers)
+      if is_rl:
+        train_op_rl = self._build_train_op(loss_rl, gradient_multipliers=gradient_multipliers) # loss_rl
+
+        # graph_utils.add_dict_to_collection({"loss": loss, "loss_rl": sum_loss, "losses": losses, "train_op_rl": train_op_rl}, "train")
+        graph_utils.add_dict_to_collection({
+          "loss": loss, 
+          "losses": losses, 
+          "norms": norms,
+          "sum_loss": sum_loss,
+          "loss_rl": loss_rl,
+          "log_probs_mean": log_probs_mean,
+          "log_prob_sum_": log_prob_sum_,
+          "log_prob_sum": log_prob_sum,
+          "diff": diff,
+          "train_op_rl": train_op_rl,
+          "rewards": rewards,
+          "base_line": base_line
+          }, "train")
+        dummy_train_op = tf.constant([0]) # just a dummy train_op; real train_op is performed in hooks
+        train_op = dummy_train_op
+      else:
+        train_op = self._build_train_op(loss, gradient_multipliers=gradient_multipliers) 
+        predictions = self._create_predictions(decoder_outputs["outputs"],
+                        features=features,
+                        labels=labels,
+                        losses=losses)
+        graph_utils.add_dict_to_collection(predictions, "predictions_train")
+        graph_utils.add_dict_to_collection({
+          "loss": loss, 
+          "losses": losses, 
+          "train_op": train_op}, "train")
     return predictions, loss, train_op
