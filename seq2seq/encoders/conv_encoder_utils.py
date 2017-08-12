@@ -306,8 +306,8 @@ def topic_softmax(logits_message,logits_topic,batch_size):  ###(exp(Vi)+exp(Ki))
     logits_exp_sum = tf.reduce_sum(logits_exp_sum,-1)
     logits_exp_sum = tf.expand_dims(logits_exp_sum,-1)
     
-    if tf.contrib.learn.ModeKeys.TRAIN:
-        logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])  ###ke you ke wu
+    ###if tf.contrib.learn.ModeKeys.TRAIN:
+    logits_exp_sum = tf.tile(logits_exp_sum,[1,1,vocab_size])  ###ke you ke wu
     
     ###logits_exp_sum = tf.clip_by_value(logits_exp_sum,10000,logits_exp_sum)
     logits_softmax_output = (logits_message_exp + topic_words_mask*logits_topic_exp)/logits_exp_sum
