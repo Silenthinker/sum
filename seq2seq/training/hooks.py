@@ -280,10 +280,8 @@ class TrainSampleHook(TrainingHook):
       ]
     
     
-    source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, logits_message_nan,logits_topic_nan,topic_words_id_tensor, topic_word_location,logits_softmax_output,logits_exp_sum,topic_words_mask, logits_message_exp_nan,logits_topic_exp_nan,logits_message_exp,logits_topic_exp,losses, loss = self._session.run(source_emb_logits_fetches)
-    ###source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, logits_message_nan,logits_topic_nan,topic_words_id_tensor, topic_word_location,losses, loss = self._session.run(source_emb_logits_fetches)
-    ###tf.logging.info("source_message_emb:{}".format(source_message_emb))
-    ###tf.logging.info("source_topic_emb:{}".format(source_topic_emb))  ###ok
+    #################source_message_emb, source_topic_emb, logits_message, logits_topic, logits_output, logits_message_nan,logits_topic_nan,topic_words_id_tensor, topic_word_location,logits_softmax_output,logits_exp_sum,topic_words_mask, logits_message_exp_nan,logits_topic_exp_nan,logits_message_exp,logits_topic_exp,losses, loss = self._session.run(source_emb_logits_fetches)
+
     """
     if step%500 == 0:
         tf.logging.info("logits_message:{}".format(logits_message))
@@ -296,7 +294,7 @@ class TrainSampleHook(TrainingHook):
         ###tf.logging.info("logits_exp_sum:{}".format(logits_exp_sum))
     """
     
-    
+    """
     with open("log","a") as f:
         f.write("step:{}".format(step))
         f.write("source_message_emb:{}".format(source_message_emb))       
@@ -362,7 +360,7 @@ class TrainSampleHook(TrainingHook):
         tf.logging.info("logits_topic_nan:{}".format(logits_topic_nan))
         tf.logging.info("logits_message_exp_nan:{}".format(logits_message_exp_nan))
         tf.logging.info("logits_topic_exp_nan:{}".format(logits_topic_exp_nan))
-    
+    """
         
     ##tf.logging.info("loss:{}".format(loss))
     #tf.logging.info("logits_message_infer:{}".format(logits_message_infer))

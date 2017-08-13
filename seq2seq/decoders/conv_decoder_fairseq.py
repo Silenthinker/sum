@@ -216,8 +216,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     cur_inputs_pos = self.add_position_embedding(cur_inputs, time, batch_size)
     
     enc_output = state 
-    with tf.device("/gpu:1"):  
-      logits = self.infer_conv_block(enc_output, cur_inputs_pos, is_train=False) # [B, V]
+    ###with tf.device("/gpu:1"):  
+    logits = self.infer_conv_block(enc_output, cur_inputs_pos, batch_size, is_train=False) # [B, V]
     
     
     ##softmax = tf.nn.softmax(logits, dim=-1, name=None) # [B, self.V]
@@ -246,7 +246,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     return outputs, enc_output, next_inputs, finished, log_prob
     
 
-  def infer_conv_block(self, enc_output, input_embed, is_train=None):
+  def infer_conv_block(self, enc_output, input_embed, batch_size, is_train=None):
     # Apply dropout to embeddings
     if is_train is None:
       is_train = self.mode == tf.contrib.learn.ModeKeys.TRAIN
@@ -266,7 +266,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     ###ids tensor of topic words   
     topic_words_id_tensor = graph_utils.get_dict_from_collection("vocab_tables")["topic_words_id_tensor"]
 
-    ###batch_size = next_layer_topic.get_shape().as_list()[0]
+    ###batch_size = next_layer.get_shape().as_list()[0]
 
     ###shape = next_layer.get_shape().as_list()
     ###logits = tf.reshape(next_layer, [-1,shape[-1]])        
@@ -279,7 +279,8 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     topic_word_onehot = tf.contrib.layers.one_hot_encoding(topic_words_id_tensor,num_classes=vocab_size)
     topic_word_location = tf.reduce_sum(topic_word_onehot,0)
     topic_word_location = tf.expand_dims(topic_word_location, 0)
-    batch_size = self.config.beam_width#########
+    ###batch_size = self.config.beam_width#########
+    tf.logging.info("infer_conv_block batch_size:"+str(batch_size))
     topic_words_mask = tf.tile(topic_word_location, [batch_size,1])
     
     graph_utils.add_dict_to_collection({
@@ -361,7 +362,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     with tf.variable_scope("decoder"):
       initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
       enc_output = initial_state
-      logits = self.infer_conv_block(enc_output, initial_inputs, is_train=False)
+      logits = self.infer_conv_block(enc_output, initial_inputs, batch_size, is_train=False)
       
 
   def print_tensor_shape(self, tensor, name):
@@ -374,7 +375,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     with tf.variable_scope("decoder"):
       initial_finished, initial_inputs, initial_state = self.initialize(batch_size)
       enc_output = initial_state
-      logits = self.infer_conv_block(enc_output, initial_inputs, is_train=False)
+      logits = self.infer_conv_block(enc_output, initial_inputs, batch_size, is_train=False)
     conv_dec_dict = {"initial_inputs": initial_inputs, "enc_output": initial_state, "logits": logits}
     graph_utils.add_dict_to_collection(conv_dec_dict, "conv_dec_dict")
     tf.get_variable_scope().reuse_variables()    
@@ -397,6 +398,7 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
     '''
     maximum_iterations = 16 # self.params["max_decode_length"] - 1
     batch_size = enc_output.attention_values_length.get_shape().as_list()[0]
+    tf.logging.info("conv_decoder_train_infer batch_size:"+str(batch_size))
     # with tf.variable_scope(tf.get_variable_scope(), reuse=False):
     #   with tf.variable_scope("decoder"):
     #     # with tf.device("/gpu:1"):  
@@ -501,7 +503,6 @@ class ConvDecoderFairseq(Decoder, GraphModule, Configurable):
         outputs = self.conv_decoder_train(enc_output=enc_output, labels=labels, sequence_length=sequence_length)
         states = None
         ##return outputs, states
-
       if rl:
         outputs_greedy = self.conv_decoder_train_infer(enc_output=enc_output, sequence_length=sequence_length, sample=False)
         outputs_sampled = self.conv_decoder_train_infer(enc_output=enc_output, sequence_length=sequence_length, sample=True)

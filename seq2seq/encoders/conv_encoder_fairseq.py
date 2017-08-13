@@ -128,6 +128,7 @@ class ConvEncoderFairseq(Encoder):
             
 
     final_state = tf.reduce_mean(cnn_c_output, 1)
+    tf.logging.info("final_state:{}".format(final_state))
     
     #####for topic embedding
     # Apply dropout to embeddings
