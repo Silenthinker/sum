@@ -86,7 +86,7 @@ class ConvSeq2Seq(Seq2SeqModel):
         "optimizer.clip_embed_gradients": 5,
         "optimizer.sync_replicas": 0,
         "optimizer.sync_replicas_to_aggregate": 0,
-        "enable_topic": False,
+        "enable_topic": True,
         
 })
     return params
